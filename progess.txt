@@ -1,0 +1,9 @@
+first tried to use praw, but found that it can only get 1000 results, which amounts to ~3 days of data on r/india
+Using another api pushshift, able to search posts by date, but it had the following problem:
+	pushshift unlike praw is not using reddit api directly, pushshift instead captures a post
+	when it is initially posted. This means that if the post changes, these changes are not captured by the api
+	for example if it is removed by moderators, automod removes it, it gets deleted, has missing/ incorrect flair etc.
+So I went for a hybrid approach:
+	1. Use pushshift to get results by searching for posts after a date, iterating over date(s)
+	2. Use praw to get current status of the post by getting it's url from pushshift
+	3. if valid, get data from praw

@@ -48,7 +48,7 @@ def check(sub):
     else:
         return False
 
-num = 0
+# Write out data captured to output file
 def writeout(posts):
     with open('data2.txt', 'a') as f:
         for i in posts:
@@ -77,25 +77,27 @@ def writeout(posts):
 prevdate=''
 for i in range(300):
     if i==0:
-        date = int(time.time())
+        date = 1583304037
+        #date = 1584148366
+        #date = int(time.time())
     else:
         date=prevdate
     
-    #debug
-    #date = int(time.time())
     data = pushshift_fetch(date, subreddit)
     total_posts = len(data)
     accepted = 0
     print("#debug total_posts: ", total_posts)
-    #posts = []
+    
     #for i in data[0]:
     #    print(i,end=":")
     #    print(data[0][i])
     
     prevdate = data[-1]['created_utc']
-    print(prevdate)
+    
+    print("#debug prevdate: ", prevdate)
+    
     posts = []
-    print("#debug big iter i:", i)
+    #print("#debug big iter i:", i)
     """for submission in data:
         print(process_text(submission['title']))
         print(process_text(submission['selftext']))
@@ -104,57 +106,78 @@ for i in range(300):
         print(submission['created_utc'])
         print(submission['permalink']) """
 
-    import pprint
-    """num = 0
+    
+    #import pprint
+    #links = []
+    ids = []
     for submission in data:
         # check if original post has a flair at time of submission
-        prevdate = submission['created_utc']
+        #prevdate = submission['created_utc']
         if 'link_flair_text' in submission.keys():
+            #links.append('https://www.reddit.com'+submission['permalink'])
+            ids.append('t3_'+submission['id'])
+    
+    for n in range(10):
+        if (n * 100) < len(ids):
+            #fetch_submission = reddit.info(url=links[n*100:(n+1)*100])
+            fetch_submission = reddit.info(fullnames=ids[n*100:(n+1)*100])
+            #print(fetch_submission)
+            #print(len(fetch_submission))
             # check if post is valid now
-            sub = reddit.submission(url='https://www.reddit.com'+submission['permalink'])
-            time.sleep(2)
-            #print(sub.title)
-            #pprint.pprint(vars(sub))
-            if check(sub):
-                accepted += 1
-                #print("#debug :", sub.selftext)
-                d = dict()
-                d['title'] = process_text(submission['title'])
-                d['flair'] = submission['link_flair_text']
-                d['selftext'] = process_text(submission['selftext'])
-                d['date'] = datetime.datetime.fromtimestamp(submission['created_utc'])
-                d['sub_id'] = submission['id']
-                d['date_raw'] = submission['created_utc']
-                d['permalink'] = submission['permalink']
-                comments = []
-                for top_level_comment in sub.comments:
-                    c = ''
+            #sub = reddit.submission(url='https://www.reddit.com'+submission['permalink'])
+            
+            num = 0        
+            for sub in fetch_submission:
+                #time.sleep(2)
+                #print('ow')
+                #print("#debug outside")
+                #print(sub.title)
+                #print(sub.id)
+                #pprint.pprint(vars(sub))
                 
-                    if isinstance(top_level_comment, MoreComments):
-                        comments.append(c)
-                    else:
-                        c += process_text(top_level_comment.body)
-                        comments.append(c)
+                if check(sub):
+                    accepted += 1
+                    #print("#debug :", sub.selftext)
+                    d = dict()
+                    #print("#debug inside")
+                    #print(sub.title)
+                    #print(sub.id)
+                    d['title'] = process_text(sub.title)
+                    d['flair'] = sub.link_flair_text
+                    d['selftext'] = process_text(sub.selftext)
+                    d['date'] = datetime.datetime.fromtimestamp(sub.created_utc)
+                    d['sub_id'] = sub.id
+                    d['date_raw'] = sub.created_utc
+                    d['permalink'] = sub.permalink
+                    comments = []
+                    for top_level_comment in sub.comments:
+                        c = ''
+                
+                        if isinstance(top_level_comment, MoreComments):
+                            comments.append(c)
+                        else:
+                            c += process_text(top_level_comment.body)
+                            comments.append(c)
     
-                for _ in range(3-len(comments)):
-                    comments.append('')
+                    for _ in range(3-len(comments)):
+                        comments.append('')
     
-                d['c1'] = comments[0]
-                d['c2'] = comments[1]
-                d['c3'] = comments[2]
-                posts.append(d)
+                    d['c1'] = comments[0]
+                    d['c2'] = comments[1]
+                    d['c3'] = comments[2]
+                    posts.append(d)
 
-                num+=1
-                if num % 10 == 0:
-                    print("#debug data processed:", num)
-                if num % 100 == 0:
-                    writeout(posts)
-                    print('#debug data written out', num)
-                    posts = []
-    writeout(posts)
-    posts=[]
+                    num+=1
+                    if num % 10 == 0:
+                        print("#debug data processed:", num)
+                    if num % 20 == 0:
+                        writeout(posts)
+                        print('#debug data written out', num)
+                        posts = []
+            writeout(posts)
+            posts=[]
     print("#debug big iter: ", i)
-    print("#debug accepted {} of {} posts".format(accepted, total_posts))"""
+    print("#debug accepted {} of {} posts".format(accepted, total_posts))
     #time.sleep(60*20)
 
 

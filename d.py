@@ -95,7 +95,7 @@ for i in range(300):
     prevdate = data[-1]['created_utc']
     print(prevdate)
     posts = []
-    print("#debug big iter i:", i)
+    #print("#debug big iter i:", i)
     """for submission in data:
         print(process_text(submission['title']))
         print(process_text(submission['selftext']))
@@ -104,15 +104,15 @@ for i in range(300):
         print(submission['created_utc'])
         print(submission['permalink']) """
 
-    import pprint
-    """num = 0
+    #import pprint
+    num = 0
     for submission in data:
         # check if original post has a flair at time of submission
-        prevdate = submission['created_utc']
+        #prevdate = submission['created_utc']
         if 'link_flair_text' in submission.keys():
             # check if post is valid now
             sub = reddit.submission(url='https://www.reddit.com'+submission['permalink'])
-            time.sleep(2)
+            #time.sleep(2)
             #print(sub.title)
             #pprint.pprint(vars(sub))
             if check(sub):
@@ -154,7 +154,7 @@ for i in range(300):
     writeout(posts)
     posts=[]
     print("#debug big iter: ", i)
-    print("#debug accepted {} of {} posts".format(accepted, total_posts))"""
+    print("#debug accepted {} of {} posts".format(accepted, total_posts))
     #time.sleep(60*20)
 
 
