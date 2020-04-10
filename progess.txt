@@ -1,3 +1,4 @@
+8 April 2020:
 first tried to use praw, but found that it can only get 1000 results, which amounts to ~3 days of data on r/india
 Using another api pushshift, able to search posts by date, but it had the following problem:
 	pushshift unlike praw is not using reddit api directly, pushshift instead captures a post
@@ -7,3 +8,15 @@ So I went for a hybrid approach:
 	1. Use pushshift to get results by searching for posts after a date, iterating over date(s)
 	2. Use praw to get current status of the post by getting it's url from pushshift
 	3. if valid, get data from praw
+
+10 April 2020:
+Conducted initial eda, came to know a lot about the dataset, cleaned it
+Class imbalance came to light, and so did the imbalance in data length available 
+for each class
+Right now I am thinking of trying out some of the following approaches:
+1. Use lstm with/without attention with text embeddings from fasttext
+2. Finetune a recurrent net, like ULMFiT
+3. Finetune a transformer net, like openAI GPT
+4. Ensemble? Boost data? Under/Over sample?
+Currently proceeding to understand how to do the above, all this + eda 
+will be done again and again till get a satisfying answer
