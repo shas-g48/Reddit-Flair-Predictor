@@ -20,3 +20,7 @@ Right now I am thinking of trying out some of the following approaches:
 4. Ensemble? Boost data? Under/Over sample?
 Currently proceeding to understand how to do the above, all this + eda 
 will be done again and again till get a satisfying answer
+
+12 April 2020
+Trying to get baseline accuracy using transformers, found a simple implementation SimpleTransformers https://github.com/ThilinaRajapakse/simpletransformers
+plan to do a baseline lstm, maybe from scratch? and also metric for loss to tackle imbalance.
