@@ -24,3 +24,6 @@ will be done again and again till get a satisfying answer
 12 April 2020
 Trying to get baseline accuracy using transformers, found a simple implementation SimpleTransformers https://github.com/ThilinaRajapakse/simpletransformers
 plan to do a baseline lstm, maybe from scratch? and also metric for loss to tackle imbalance.
+
+13 April 2020
+Trying gru from scratch + embeddings from fasttext
