@@ -27,3 +27,21 @@ plan to do a baseline lstm, maybe from scratch? and also metric for loss to tack
 
 13 April 2020
 Trying gru from scratch + embeddings from fasttext
+
+14 April 2020 noon
+gru from scratch implemented
+some roadblocks:
+1. instead of loading whole dataset and converting to embedding, need to only get embedding for batch
+2. need to use embeddings for subword rather than word as won't generalize to oov
+3. came across gensim? can maybe use that
+4. better loss function than softmax cross entropy
+
+14 April 2020 night
+gru from scratch + fasttext + input/output placeholders implemented
+some roadblocks faced:
+1. Preferred approach was to use tf.data, but cannot because converting the whole dataset to embedding runs out of memory.
+2. Then tried tensorflow eager, able to get data but for some reason unable to apply gradients
+3. Then implemented non eager tf with placeholder (using gensim to train fasttext model), training on a dataset of ~80k is too slow to be practical
+4. Can use a embedding layer, but then won't generalize to oov
+Todo:
+1. Figure out a way to make training feasible before implementing ideas from 14 April
