@@ -43,6 +43,12 @@ def load_data(filename, en):
                 #print(load_input)
                 i = 0
 
+    output_probs = []
+    for i in load_output:
+        prob = [0 for i in range(len(valid_flairs))]
+        prob[i] = 1
+        output_probs.append(prob)
+
     #print('#debug load_input: ', load_input)
     #print('#debug load_output: ', load_output)
     # get input vector
@@ -65,7 +71,7 @@ def load_data(filename, en):
     #print(input_vec)
     print('#debug input vec shape: ', np.asarray(input_vec).shape)
 
-    return (np.asarray(input_vec, dtype=np.float32), np.asarray(load_output, dtype=np.float32))
+    return (np.asarray(input_vec, dtype=np.float32), np.asarray(output_probs, dtype=np.int32))
 
 def get_data(filename, shuffle, batch_size, en):
     dataset = load_data(filename, en)
