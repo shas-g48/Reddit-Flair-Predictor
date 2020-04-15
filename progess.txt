@@ -44,4 +44,16 @@ some roadblocks faced:
 3. Then implemented non eager tf with placeholder (using gensim to train fasttext model), training on a dataset of ~80k is too slow to be practical
 4. Can use a embedding layer, but then won't generalize to oov
 Todo:
-1. Figure out a way to make training feasible before implementing ideas from 14 April
+1. Figure out a way to make training feasible before implementing ideas from 14 April noon
+
+15 April 2020 noon
+training is taking a reasonable time on cpu after reducing gru hidden units and decreasing size of input
+Some challenges and todo:
+1. Train the neural network well, applying advice from https://karpathy.github.io/2019/04/25/recipe/
+2. Get some more knowledge about nlp, maybe go through some of the content of cs224n
+3. Implement attention from scratch
+4. Again the loss is not a good metric, will refer to 1
+5. Create a method of evaluating performance, will refer to 1
+6. Maintain a training log
+Todo later:
+1. Figure out performance difference between my cpu and colab gpu, so that I can get a reasonable boost while training

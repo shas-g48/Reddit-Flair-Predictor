@@ -1,0 +1,11 @@
+set up full training + eval skeleton
+	separated training and validation data N/5
+Pick a simple model that can't be screwed up
+	Picked up a lstm
+		Simplifications:
+			embedding size set to 50
+			Input size set to 25
+			GRU hidden units set to 30
+Fixed random seed to 10
+No fanciness in data
+Set up eval with metric	 
