@@ -57,3 +57,14 @@ Some challenges and todo:
 6. Maintain a training log
 Todo later:
 1. Figure out performance difference between my cpu and colab gpu, so that I can get a reasonable boost while training
+
+16 April 2020 night
+Added a complete training + evaluation pipeline to my model, got some dumb baselines, added performance metrics
+verified correctness of code.
+Some challenges and Todo:
+1. Continue tuning the network, same as 15 April 1.
+2. Explore different architectures for my gru net
+	1. increase hidden unit size
+	2. stack multiple gru cells
+	3. use attention
+3. Complete Todo 1. from 15 April
