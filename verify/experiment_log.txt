@@ -1,11 +1,222 @@
-set up full training + eval skeleton
+1. set up full training + eval skeleton
 	separated training and validation data N/5
-Pick a simple model that can't be screwed up
+2. Pick a simple model that can't be screwed up
 	Picked up a lstm
 		Simplifications:
 			embedding size set to 50
 			Input size set to 25
 			GRU hidden units set to 30
-Fixed random seed to 10
-No fanciness in data
-Set up eval with metric	 
+3. Fixed random seed to 10
+4. No fanciness in data
+5. Set up eval with metric
+	I can measure performance by (tensorboard):
+		loss over batches of training
+		total acc over complete validation set at every epoch
+		acc by cat over complete validation set at every epoch
+6. Verify starting loss
+	Should be 2.48 getting 2.87 (need to find out why) (but this is mean)
+	Verified loss function by manually finding loss.
+	Verified output logits dims
+7. Set correct bias for logits
+	found the bias but adding it would mean not using library's
+	softmax cross entropy to manually add bias in probabilities,
+	or figuring out the correct bias to add in the logits, which
+	can be done but network can learn bias on it's own
+8. Verify input independent baseline
+	input independent baseline (max from graph) (25 epochs)
+		total: 4285
+		cat0: 724
+		cat1: 4214
+		cat2: 963
+		cat3: 161
+		cat4: 53
+		cat5: 10
+		cat6: 1
+		cat7: 1
+		cat8: 0
+		cat9: 2
+		cat10: 0
+		cat11: 6
+	When actually feeding in data:
+		total: 5875
+		cat0: 3016
+		cat1: 3766
+		cat2: 460
+		cat3: 120
+		cat4: 8
+		cat5: 1
+		cat6: 1
+		cat7: 1
+		cat8: 0
+		cat9: 0
+		cat10: 0
+		cat11: 3
+	Inference:
+	How I know the network is learning something from the data:
+		1. in input independent case, it is unable to increase
+		total accuracy beyond a level, first it just learns the
+		dataset output bias (the raw probabilities of occurence
+		of each category), then it goes clueless as it does not
+		know what signal is coming from where.
+		2. in input independent case changes in category
+		accuracy are less drastic than when input is actually
+		fed, because the network actually has same input 
+		for all sentences, whereas when input is actually fed,
+		it greedily increases accuracy of a few categories to get a
+		higher total accuracy as it is able to identify the
+		input. This can also be seen by the much higher value
+		of cat0 in actual input than input independent, it
+		can be more aggressive as it knows where the signal is coming
+		from
+	Some roadblocks:
+		The network is doing a good work on total accuracy, 
+		but at the cost of decreasing accuracy classes other
+		than majority. As this is not the actual architecture
+		I'll use, I'm not taking a action now and will see if
+		the network behaves well in the future, if it does
+		not I'll have to tackle the class imbalance directly.
+	More analysis done:
+		I reduced seq length from 25 to 10, as I had found
+		during eda that on avg seq length is diff for the classes
+		I got similar results to actual data with 25 words, 
+		but less max values, which tells that the network is
+		not just working on the length of the data
+	Possible errors in current analysis:
+		Maybe the smaller data does not represent the actual
+		data distribution as I just did:
+			head -n <nu_of_lines> data > smaller_data
+		Will be checking if the distribution is indeed correct.
+		My doubt was true, the counts were:
+			[97, 97, 0, 0, 8, 25, 0, 9, 0, 0, 1, 13]
+		That is why the cat2 went to zero!
+		Now I'll manually create smaller datasets from the training 
+		by following similar method as done in eda
+	Action taken:
+		Separate dataset and do 6-8 again
+6-2. Verify starting loss
+	Should be 2.48 and got 2.48
+7-2. Set correct bias for logits
+	Skipping again, same argument as 7.
+8-2. Verify input independent baseline
+	Note: dataset used for training: data_correct_med.txt
+			Stats: [3916, 3572, 2304, 774, 1310, 724, 92, 327, 181, 340, 6, 346]
+			Total: 13892
+	      dataset used for validation: data_valid.txt
+			Stats: [4895, 4465, 2881, 967, 1638, 904, 114, 409, 226, 426, 8, 433]
+			Total: 17366
+	input independent baseline (25 epochs) (max, last)
+		total: 3224, 3101 (decreasing)
+		cat0: 701,701 (strictly increasing)
+		cat1: 2305,1986 (strictly decreasing)
+		cat2: 530, 370 (strictly decreasing)
+		cat3: 27, 16 (decreasing)
+		cat4: 36, 28 (increasing, bell shape)
+		cat5: 0, 0 (constant)
+		cat6: 1, 0 (decreasing)
+		cat7: 0, 0 (constant)
+		cat8: 0, 0 (constant)
+		cat9: 0, 0 (constant)
+		cat10: 0, 0 (constant)
+		cat11: 0, 0 (constant)
+		acc % (calculated manually) = 18.5%
+	When actually feeding in data:
+		total: 9405, 9405 (strictly increasing)
+		cat0: 3714, 3595 (decreasing, fluctuating at a high value)
+		cat1: 2434, 2399 (increasing)
+		cat2: 2064, 2054 (increasing)
+		cat3: 199, 199 (strictly increasing)
+		cat4: 817, 787 (increasing, bell shape)
+		cat5: 87, 87 (strictly increasing)
+		cat6: 63, 63 (increasing)
+		cat7: 118, 118 (strictly increasing)
+		cat8: 0, 0 (constant)
+		cat9: 93, 93 (strictly increasing)
+		cat10: 0, 0 (constant)
+		cat11: 10, 10 (increasing)
+		acc % (calculated manually) = 54.15%
+	Inference:
+	How I know the network is learning something from the data:
+		1. Total accuracy increases when actual data is fed and 
+		decreases when zeros are fed instead. Maximium and final
+		both are much higher than input independent baseline.
+		2. When feeding in zeros, model just learns to output
+		dominant class, increasing its accuracy, while almost all
+		others decrease. This is the most efficient ways when you
+		don't know anything about the input, just output class with
+		max in batch, while when input is actually fed, network
+		can see where the signal is coming from, and this
+		results in increase in accuracy among almost all cats
+	Possible roadblocks:
+		1. cat10 and cat8 remain constant at zero.
+		2. There is very little data for cat10
+		3. There is less data for cat8, but this is also 
+		true for cat6, so the problems can be:
+			1. Title length of cat8 is too small, or mostly noise
+			2. There is very little structure in cat8 titles
+			3. some bug in the code
+	Action Taken:
+		Not taking action now, but if same behavior, will conduct eda again
+		(unable to fit cat8 even when less imbalance)
+		For cat10 data size is mostly at fault in my opinion
+9. Overfit one batch
+	Method: Set training set and validation set same, to a small dataset
+		Wait till loss -> zero
+		See that accuracy is maximum
+	Note: Same dataset used for training and validation (data_small_tiny.txt)
+		Stats: [56, 52, 33, 12, 19, 11, 2, 5, 3, 5, 1, 5]
+		Total: 204
+		lr = 1e-3
+	Result:	The model completely fit the training data and loss went down to 0.01
+	Inference: The model is capable of reaching zero loss on a tiny dataset, no
+		major bug is there in the code
+10. Verify decreasing training loss:
+	Method: Verify underfitting in current model on a medium size dataset
+		This happens when model is unable to cross a certain accuracy level
+		due to lake of available weights. Can be seen easily by decreasing lr
+		so that wiggling does not happen due to a large lr, and seeing if
+		loss and accuracy starts fluctuating and reaches some level which
+		it cannot break through in a finite time period.
+	Note: Same dataset for training and validation (data_small_keep_all_cats.txt)
+		Stats: [1958, 1786, 1152, 387, 655, 362, 46, 164, 91, 170, 3, 173]
+		Total: 6947
+		lr: 3e-4
+		gru hidden units = 30
+		epochs = 500
+	Result: Model struggles to classify the last 1000 points
+		Accuracy starts fluctuating at about 240 epochs (stops increasing strictly)
+		Loss is unable to go below 0.3 and starts fluctuating around 0.45
+		Maximum accuracy 6020 at 500 epochs
+	Claim: Increasing model capacity just a little will reach same accuracy and loss in less time.
+	Note: Kept all other params same but increased gru hidden unit size to 50
+	Result: Model reaches maximum accuracy 6913 at 483 epochs
+		Loss goes much lower than 0.3 reaching less than 0.05 and even lower avg loss sometimes
+		Model exceeds previous baseline by reaching 6103 in just 133 epochs.
+	Additional Notes: While increasing from 30 -> 50 is increasing the number of weights too much,
+		increasing it a little bit will also give gains albeit less
+	Inference: Model is underfitting in current capacity (30 hidden units) on 6947 data points
+		Increasing the model size leads to a decrease in loss and increase in accuracy.
+11. Visualize all inputs to model just before it enters it
+	Verified encoding of output to one hot in data loader
+	Verified dims of input: (16, 25, 50) (batch_size, time_steps, embedding_size)
+	Verified dims of output: (16, 12) (batch_size, no_of_cats)
+	All inputs can be visualized just before entering by doing dimensionality reduction and 
+	plotting on a graph. I know distribution of output from eda, and distribution of input
+	depends on the size of embedding used and the specific words. By plotting this and using
+	the labels, maybe I can find which words are more important for which category.
+	Action taken:
+		Skipping for now as this can be done by our intuition about language, but this can be 
+		useful to find things we don't expect to change the output.
+12. Visualize Prediction dynamics:
+	Visualizing previous graphs, The loss graph of gru with 50 units indicates a optimal loss
+	function decrease, but can be sped up by increasing the lr
+	The loss graph of gru with 30 units indicates a low lr initially and underfitting later
+13. Check for mixing across batch/ use backprop to chart dependencies
+	I checked the dims of all 'checkpoints' in the graph and they seem fine
+	Then I went to tensorboard graphs to check if the connections to gradients
+	were as expected, and they were. Only output is Adam and inputs are rnn, dense,
+	loss and inference as expected.
+14. Generalize a special case, write loopy code before vectorized
+	Tensorflow performs better with vectorized code, and already I have checked most 
+	of the 'checkpoint' by setting them as self.'node to check' = 'node to check' and 
+	then printing the result after retrieving it from sess.run()
+	

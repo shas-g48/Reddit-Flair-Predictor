@@ -9,9 +9,7 @@ import time
 
 # initialization for praw
 from praw.models import MoreComments
-reddit = praw.Reddit(client_id='WI6HW6PU0KWLtQ',
-                     client_secret='URXonv9_7VKTgARm3V-tAXH_Jco',
-                     user_agent='indiasubscrape')
+reddit = praw.Reddit()
 subreddit = 'india'
 
 # gets submissions in a list of dicts
