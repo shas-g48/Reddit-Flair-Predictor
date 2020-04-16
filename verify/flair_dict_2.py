@@ -15,9 +15,10 @@ class FlairPredict(object):
     def __init__(self):
         self.lr = 3e-4
         self.gstep = tf.get_variable('gstep', dtype=tf.int32, initializer=tf.constant(0))
+        self.gstep_acc = tf.get_variable('gstep_acc', dtype=tf.int32, initializer=tf.constant(0))
         #self.en = utils.load_vectors('data/vocab.vec')
         self.batch_size = 16    # batch size for training
-        self.batch_size_valid = 400 # big batch size reduces evaluation time
+        self.batch_size_valid = 500 # big batch size reduces evaluation time
         self.skip_step = 500    # to print loss at regular intervals
         self.size = 69422    # training dataset size
         self.size_valid = 17366
@@ -26,7 +27,7 @@ class FlairPredict(object):
 
     def get_data(self):
         with tf.name_scope('data'):
-            self.train_input, self.train_output = utils.load_data('data/data_small.txt')
+            self.train_input, self.train_output = utils.load_data('data/data_med.txt')
             self.valid_input, self.valid_output = utils.load_data('data/data_valid.txt')
             #print(self.train_input)
             #print(self.train_output)
@@ -58,6 +59,8 @@ class FlairPredict(object):
         with tf.name_scope('evaluate'):
             # to hold total accuracy of the whole validation set
             self.acc = tf.get_variable('acc', initializer=tf.constant(0))
+            # to hold accuracy of whole validation set by category
+            self.cat_acc = tf.get_variable('cat_acc', shape=(1,12), dtype=tf.int32, initializer=tf.zeros_initializer())
 
             # construct default one hot to gather from as
             # tf.one_hot does not allow specifying depth at runtime
@@ -97,39 +100,91 @@ class FlairPredict(object):
             # add batch acc to total
             self.acc_upd = self.acc.assign_add(correct)
 
+            # gather output one hot vectors that were correctly predicted
+            indices_correct = tf.where(eq_row)
+            self.indices_correct = indices_correct
+            one_hot_correct = tf.gather(self.eval_output, indices_correct)
+            self.one_hot_correct = one_hot_correct
+
+            # add the gathered vectors to get no of correct predictions per
+            # category in current batch
+            correct_cat = tf.reduce_sum(one_hot_correct, axis=0)
+            self.correct_cat = correct_cat
+
+            # add cat batch acc to total
+            self.cat_acc_upd = self.cat_acc.assign_add(correct_cat)
+
             self.acc_reset = tf.assign(self.acc, tf.constant(0))
+            self.cat_acc_reset = tf.assign(self.cat_acc, tf.zeros(shape=(1,12), dtype=tf.int32))
 
     def eval_once(self, sess, ftmodel):
-        sess.run([self.acc_reset])
+        sess.run([self.acc_reset, self.cat_acc_reset])
 
-        acc = 0
+        total_acc = 0
+        #cat_acc = np.asarray([[0 for i in range(12)]])
+        #total_batches = ceil(5)
         total_batches = ceil(len(self.valid_input)/self.batch_size_valid)
         start_time = time.time()
         for i in range(total_batches):
             # get valid set as a batch
             bs_input = self.valid_input[i*self.batch_size_valid:(i+1)*self.batch_size_valid]
             bs_output = np.asarray(self.valid_output[i*self.batch_size_valid:(i+1)*self.batch_size_valid])
-            """print('#debug sob#')
-            print('#debug bs_output: ', bs_output)"""
+            '''print('#debug sob#')
+            print('#debug bs_output: ', bs_output)'''
             # load embeddings for input and get predicted output (cur_logits)
             bs_input_ft = utils.get_ft(bs_input, ftmodel)
             input, cur_logits = sess.run([self.input, self.logits], feed_dict={self.input:bs_input_ft})
-            doh, mi, oh, oheq, eqr, c, acc =  sess.run([self.one_hot_default, self.max_indices, self.one_hot, self.one_hot_eq, self.eq_row, self.correct, self.acc_upd], feed_dict={self.eval_logits:cur_logits, self.eval_output:bs_output})
+            doh, mi, oh, oheq, eqr, c, acc, ind, ohc, cc, cau =  sess.run([self.one_hot_default, self.max_indices, self.one_hot, self.one_hot_eq, self.eq_row, self.correct, self.acc_upd, self.indices_correct, self.one_hot_correct, self.correct_cat, self.cat_acc_upd], feed_dict={self.eval_logits:cur_logits, self.eval_output:bs_output})
             #oh, mi = sess.run([self.one_hot, self.mi], feed_dict={self.eval_logits:cur_logits, self.eval_output:bs_output})
-            """print('#debug mi: ', mi)
+            total_acc += c
+            '''print('#debug mi: ', mi)
             print('#debug doh: ', doh)
             print('#debug oheq: ', oheq)
             print('#debug oh: ', oh)
             print('#debug eq_row: ', eqr)
             print('#debug corr: ', c)
             print('#debug acc_upd: ', acc)
-            print('#debug eob#')"""
+            print('#debug ind: ', ind)
+            print('#debug ohc: ', ohc)
+            print('#debug cc: ', cc)
+            print('#debug cau: ', cau)
+            print('# debuf offense: ', acc)
+            print('#debug eob#')'''
+            #print('#debug cau: ', cau)
             #print('#debug oheq: ', oheq)
             #curacc = sess.run([self.acc_batch], feed_dict={self.eval_logits:cur_logits, self.eval_output:bs_output})
-            acc += c
+            #cat_acc = cau
         print('#debug time to eval: ', time.time()-start_time)
-        print('#debug got correct {} out of {}: '.format(acc, self.size_valid))
+        print('#debug got total correct {} out of {}: '.format(acc, self.size_valid))
+        #print(self.acc.eval())
+        print('#debug correct by category: ', cau)
+
         print("#debug % acc: {}".format(acc/self.size_valid))
+
+    def summary(self):
+            with tf.name_scope('summaries'):
+                self.loss_summary = tf.summary.scalar('loss', self.loss)
+                total_acc_summary = tf.summary.scalar('total_acc', self.acc)
+                # accuracy by category
+                cat0_summary = tf.summary.scalar('cat0_acc', self.cat_acc[0][0])
+                cat1_summary = tf.summary.scalar('cat1_acc', self.cat_acc[0][1])
+                cat2_summary = tf.summary.scalar('cat2_acc', self.cat_acc[0][2])
+                cat3_summary = tf.summary.scalar('cat3_acc', self.cat_acc[0][3])
+                cat4_summary = tf.summary.scalar('cat4_acc', self.cat_acc[0][4])
+                cat5_summary = tf.summary.scalar('cat5_acc', self.cat_acc[0][5])
+                cat6_summary = tf.summary.scalar('cat6_acc', self.cat_acc[0][6])
+                cat7_summary = tf.summary.scalar('cat7_acc', self.cat_acc[0][7])
+                cat8_summary = tf.summary.scalar('cat8_acc', self.cat_acc[0][8])
+                cat9_summary = tf.summary.scalar('cat9_acc', self.cat_acc[0][9])
+                cat10_summary = tf.summary.scalar('cat10_acc', self.cat_acc[0][10])
+                cat11_summary = tf.summary.scalar('cat11_acc', self.cat_acc[0][11])
+                self.summary_acc = tf.summary.merge([cat0_summary, cat1_summary,
+                                                    cat2_summary, cat3_summary,
+                                                    cat4_summary, cat5_summary,
+                                                    cat6_summary, cat7_summary,
+                                                    cat8_summary, cat9_summary,
+                                                    cat10_summary, cat11_summary,
+                                                    total_acc_summary])
 
     def build(self):
         self.get_data()
@@ -137,9 +192,24 @@ class FlairPredict(object):
         self.loss()
         self.optimize()
         self.evaluate()
+        self.summary()
 
     def train(self, num_epochs):
+        utils.safe_mkdir('checkpoints')
+        utils.safe_mkdir('checkpoints/flair')
+        writer = tf.summary.FileWriter('./graphs/flair', tf.get_default_graph())
+
         with tf.Session() as sess:
+            saver = tf.train.Saver()
+
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname('checkpoints/flair/checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
+
+            sess.run(tf.global_variables_initializer())
+
+            step = self.gstep.eval()
+            step_acc = self.gstep_acc.eval()
 
             # Shuffle the dataset
             data = []
@@ -163,7 +233,6 @@ class FlairPredict(object):
             # load fastText model
             ftmodel = utils.load_ft('fasttext.model')
 
-            sess.run(tf.global_variables_initializer())
 
             for j in range(num_epochs):
                 total_batches = ceil(len(self.train_input)/self.batch_size)
@@ -182,21 +251,32 @@ class FlairPredict(object):
                         #end_time = time.time()
                         #print('#debug embed: ', end_time-start_time)
 
-                        input, logits, _, loss = sess.run([self.input, self.logits, self.opt, self.loss], feed_dict={self.input:bs_input_ft, self.output:bs_output})
+                        input, logits, _, loss, loss_acc = sess.run([self.input, self.logits, self.opt, self.loss, self.loss_summary], feed_dict={self.input:bs_input_ft, self.output:bs_output})
                         #loss_time = time.time()
                         #print('#debug loss time: ', loss_time-end_time)
 
                         total_loss += loss
+                        #print(loss_acc)
+                        writer.add_summary(loss_acc, global_step=step)
                         #print(np.asarray(input).shape)
                         #print('#debug input: ', input)
                         #print(logits.shape)
                         #print('#debug output: ', logits)
+                        step += 1
                         if i % 10 == 0:
                             print('#debug loss: ', loss)
                 self.eval_once(sess, ftmodel)
+                summary_acc = sess.run([self.summary_acc])
+                #print(summary_acc[0])
+                writer.add_summary(summary_acc[0], global_step=step_acc)
+                step_acc += 1
+
+                #summary = sess.run([self.summary_op])
+                #writer.add_summary(summaries, global_step=step)
+
                 print('time to train one epoch {} : {}'.format(j, time.time()-start_time))
                 print("average loss at epoch {} : {}".format(j, total_loss/total_batches))
-                time.sleep(10)
+                #time.sleep(10)
 
 
 if __name__ == '__main__':
@@ -207,5 +287,5 @@ if __name__ == '__main__':
 
     model = FlairPredict()
     model.build()
-    model.train(100)
+    model.train(5)
     print('#debug: model built!')
