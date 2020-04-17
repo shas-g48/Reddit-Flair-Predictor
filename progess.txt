@@ -68,3 +68,13 @@ Some challenges and Todo:
 	2. stack multiple gru cells
 	3. use attention
 3. Complete Todo 1. from 15 April
+
+17 April 2020 night
+Added a loss summary to tensorboard per epoch, no need of smoothing in tensorboard
+Tried model iteration, got some results, but can't be too sure
+because forgot to set random seed.
+Some challenges and Todo:
+1. Continue tuning the network, same as 16 April 1.
+2. Maybe validate some of the results today after setting the seed correctly
+3. Complete Todo 1. from 15 April
+4. Start development of webapp
