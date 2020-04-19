@@ -78,3 +78,13 @@ Some challenges and Todo:
 2. Maybe validate some of the results today after setting the seed correctly
 3. Complete Todo 1. from 15 April
 4. Start development of webapp
+
+19 April 2020 Night
+Finished Development of webapp, runs locally
+Will check deployability on heroku
+Fixed training and evaluation time bug
+Some challenges and Todo:
+1. As the webapp is mostly finished, now I have a complete train-evaluate-test-build-deploy pipeline,
+  so I can concentrate on further tuning the network
+2. Complete 2. from April 17
+3. Finish some requirements of submission

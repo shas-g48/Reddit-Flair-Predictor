@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block main %}
+        <!-- Fill viewport -->
+        <div class="container-fluid">
+
+            <!-- http://getbootstrap.com/css/#forms -->
+            <form action="/find" method="post" id="form">
+                <div class="form-group">
+                    <label class="sr-only" for="reddit_url"><strong>Url</strong></label>
+                    <input class="form-control" id="reddit_url" name="reddit_url" placeholder="url" type="text"/>
+                </div>
+                 <div class="col text-center">
+                    <button class="btn btn-primary" id="button" type="submit">Find Flair</button>
+                </div>
+            </form>
+        </div>
+{% endblock %}
