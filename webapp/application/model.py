@@ -15,8 +15,8 @@ class FlairPredict(object):
 
     def __init__(self):
         self.lr = 1e-3
-        self.gstep = tf.get_variable('gstep', dtype=tf.int32, initializer=tf.constant(0))
-        self.gstep_acc = tf.get_variable('gstep_acc', dtype=tf.int32, initializer=tf.constant(0))
+        #self.gstep = tf.get_variable('gstep', dtype=tf.int32, initializer=tf.constant(0))
+        #self.gstep_acc = tf.get_variable('gstep_acc', dtype=tf.int32, initializer=tf.constant(0))
 
 
         #self.en = utils.load_vectors('data/vocab.vec')
@@ -27,10 +27,10 @@ class FlairPredict(object):
         #self.size = 69422    # training dataset size
         #self.size_valid = 17366
         #self.en_vec = tf.get_variable('en_vec', dtype=tf.float32,initializer=tf.constant(list(self.en.values())))
-        self.init_state = tf.get_variable('init_state', dtype=tf.float32, shape = (self.batch_size, 1000), initializer=tf.zeros_initializer())
+        #self.init_state = tf.get_variable('init_state', dtype=tf.float32, shape = (self.batch_size, 1000), initializer=tf.zeros_initializer())
 
     def get_data(self):
-        with tf.name_scope('data'):
+        with tf.variable_scope('data', reuse=tf.AUTO_REUSE) as scope:
             #self.train_input, self.train_output = utils.load_data('data/data_correct_med.txt')
             #self.valid_input, self.valid_output = utils.load_data('data/data_valid.txt')
 
@@ -42,11 +42,11 @@ class FlairPredict(object):
             #print(self.train_output)
             #self.input = tf.placeholder(dtype=tf.float32, shape=[None, 100, 300])
             #self.input = tf.placeholder(dtype=tf.float32, shape=[None, 50, 300])
-            self.input = tf.placeholder(dtype=tf.float32, shape=[None, 25, 50])
+            self.input = tf.placeholder(dtype=tf.float32, shape=[None, 25, 32])
             self.output = tf.placeholder(dtype=tf.int32, shape=[None, 12])
 
     def inference(self):
-        with tf.name_scope('inference'):
+        with tf.variable_scope('inference', reuse=tf.AUTO_REUSE) as scope:
             #cell = tf.nn.rnn_cell.GRUCell(30)
             #cell = tf.contrib.cudnn_rnn.CudnnGRU(num_layers=1, num_units=30, dtype=tf.float32)
             cell = tf.contrib.rnn.GRUBlockCellV2(num_units=50)
@@ -80,15 +80,15 @@ class FlairPredict(object):
         self.opt = tf.train.AdamOptimizer(self.lr).minimize(self.loss, global_step=self.gstep)
 
     def evaluate(self):
-        with tf.name_scope('evaluate'):
+        with tf.variable_scope('evaluate', reuse=tf.AUTO_REUSE) as scope:
             # to hold total accuracy of the whole validation set
-            self.acc = tf.get_variable('acc', initializer=tf.constant(0))
+            #self.acc = tf.get_variable('acc', initializer=tf.constant(0))
             # to hold accuracy of whole validation set by category
-            self.cat_acc = tf.get_variable('cat_acc', shape=(1,12), dtype=tf.int32, initializer=tf.zeros_initializer())
+            #self.cat_acc = tf.get_variable('cat_acc', shape=(1,12), dtype=tf.int32, initializer=tf.zeros_initializer())
 
             # construct default one hot to gather from as
             # tf.one_hot does not allow specifying depth at runtime
-            default_indices = tf.get_variable('default_indices',
+            default_indices = tf.get_variable('default_indices', dtype=tf.int32,
                             initializer=tf.constant([0,1,2,3,4,5,6,7,8,9,10,11]))
             # specify on value and off value of int32 type
             value_on = tf.get_variable('value_on', dtype=tf.int32, initializer=tf.constant(1))
@@ -104,6 +104,7 @@ class FlairPredict(object):
             max_values, max_indices = tf.nn.top_k(self.eval_logits, k=1)
             self.max_indices = max_indices
 
+            '''
             # convert this to one hot
             one_hot = tf.gather_nd(self.one_hot_default, indices=max_indices, name='one_hot')
             self.one_hot = one_hot
@@ -139,7 +140,7 @@ class FlairPredict(object):
             self.cat_acc_upd = self.cat_acc.assign_add(correct_cat)
 
             self.acc_reset = tf.assign(self.acc, tf.constant(0))
-            self.cat_acc_reset = tf.assign(self.cat_acc, tf.zeros(shape=(1,12), dtype=tf.int32))
+            self.cat_acc_reset = tf.assign(self.cat_acc, tf.zeros(shape=(1,12), dtype=tf.int32))'''
 
     def eval_once(self, sess):
         sess.run([self.acc_reset, self.cat_acc_reset])
@@ -224,11 +225,11 @@ class FlairPredict(object):
     def build(self):
         self.get_data()
         self.inference()
-        self.loss()
-        self.optimize()
+        #self.loss()
+        #self.optimize()
         self.evaluate()
-        self.loss_avg()
-        self.summary()
+        #self.loss_avg()
+        #self.summary()
 
     def predict(self):
         with tf.Session() as sess:
@@ -243,7 +244,7 @@ class FlairPredict(object):
 
             total_batches = ceil(len(self.predict_input)/self.batch_size_predict)
 
-            ftmodel = utils.load_ft('application/fasttext.model')
+            ftmodel = utils.load_ft('application/fasttext.model.bin')
             _, int_map = utils.flair_mapping()
 
             num_flair = []
@@ -390,6 +391,7 @@ def run_model():
 
     model = FlairPredict()
     model.build()
+
     pred_json, pred_object = model.predict()
     return pred_json, pred_object
     #model.train(50)

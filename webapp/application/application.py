@@ -1,4 +1,6 @@
 from flask import Flask, Blueprint, jsonify, render_template, request, flash, redirect
+import nltk
+nltk.download('punkt')
 import application.utils as utils
 import application.model as model
 import werkzeug
@@ -103,6 +105,8 @@ def automated_testing():
 
         # debugging template
         return pred_json
+
+
 
         #return ''
             #return redirect(url_for('uploaded_file',

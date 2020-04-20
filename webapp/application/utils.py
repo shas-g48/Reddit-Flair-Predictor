@@ -2,7 +2,8 @@ import numpy as np
 #import tensorflow as tf
 import os
 import io
-from gensim.models.fasttext import FastText
+#from gensim.models.fasttext import FastText
+import fasttext
 
 import requests
 import json
@@ -90,11 +91,15 @@ def load_posts(filename):
 
     return (np.asarray(load_input, dtype=np.object), np.asarray(load_url, dtype=np.object))
 
-
 def load_ft(filename):
     fname = os.path.abspath(filename)
-    model = FastText.load(fname)
+    model = fasttext.load_model(fname)
     return model
+
+'''def load_ft(filename):
+    fname = os.path.abspath(filename)
+    model = FastText.load(fname)
+    return model'''
 
 def load_vectors(filename):
     """
@@ -120,12 +125,21 @@ def get_vectors(input, en):
 
     return np.asarray(embed_output, dtype=np.float32)
 
-def get_ft(input, ftmodel):
+'''def get_ft(input, ftmodel):
     embed_output = []
     for line in input:
         cur_line = []
         for word in line:
             cur_line.append(ftmodel.wv[str(word)])
+        embed_output.append(cur_line)
+    return np.asarray(embed_output, dtype=np.float32)'''
+
+def get_ft(input, ftmodel):
+    embed_output = []
+    for line in input:
+        cur_line = []
+        for word in line:
+            cur_line.append(ftmodel.get_word_vector(str(word)))
         embed_output.append(cur_line)
     return np.asarray(embed_output, dtype=np.float32)
 
