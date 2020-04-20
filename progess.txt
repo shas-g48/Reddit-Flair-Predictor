@@ -88,3 +88,18 @@ Some challenges and Todo:
   so I can concentrate on further tuning the network
 2. Complete 2. from April 17
 3. Finish some requirements of submission
+
+20 April 2020 Night
+Adapted webapp code to run on heroku,
+switched from gensim to fasttext,
+updated requirements
+Details:
+1. As now webapp is deployed on heroku, focus on 1. form 19 April 2020 Night
+2. Changed tensorflow from 1.15 to 1.13.1 to reduce heroku slug size
+3. Switched from gensim to fasttext to reduce heroku slug size
+4. reduced embedding size to decrease size of trained fasttext model
+5. removed unnecessary variables from webapp
+Todo:
+1. 2. from 19 April 2020 Night
+2. Conduct eda again
+3. Continue tuning the network
