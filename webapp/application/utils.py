@@ -1,54 +1,96 @@
-import numpy as np
-#import tensorflow as tf
 import os
 import io
-#from gensim.models.fasttext import FastText
-import fasttext
-
 import requests
 import json
 import time
 import datetime
+import string
+import re
+
 import praw
 import nltk
-import string
+import numpy as np
+import fasttext
+
+def flair_mapping():
+    """ Produces mapping from flair to index and vice versa """
+    valid_flairs = ['Politics', 'Non-Political', 'AskIndia', 'Policy/Economy',
+                    'Business/Finance','Science/Technology', 'Scheduled',
+                     'Sports', 'Food','Photography','CAA-NRC-NPR', 'Coronavirus']
+
+    # create the mappings in separate dictionaries
+    flair_to_index = dict()
+    index_to_flair = dict()
+    for index, flair in enumerate(valid_flairs):
+        flair_to_index[flair] = index
+        index_to_flair[index] = flair
+
+    return flair_to_index, index_to_flair
 
 def process_text(text):
-    import re
-    # remove urls from text
+    """
+    Process data by removing undesirable characters
+    text: string to be processed
+    """
+    # remove urls from text and tokenize it
     text = re.sub(r'https\S+', '', text)
     tokens = nltk.tokenize.word_tokenize(text)
-    # remove usernames of form u/username from text
+
+    # remove reddit username and subreddit mentions
     tokens = [re.sub(r'u\/.*', '', i) for i in tokens]
-    # remove subreddit of form r/subreddit from text
     tokens = [re.sub(r'r\/.*', '', i) for i in tokens]
 
+    # remove punctuations
     table = str.maketrans('','',string.punctuation)
     stripped = [w.translate(table) for w in tokens]
 
-    #words = [word for word in stripped if word.isalpha()]
+    # remove numeric characters from words
     words = [re.sub(r'[0-9]', '', i) for i in stripped]
 
-    #text = ' '.join(words)
+    # remove empty tokens and join text
     words = [x for x in words if x!= '']
     text = ' '.join(words)
+
     return text
 
 def keep_alpha(text):
+    """
+    Keep only alphabets
+
+    text: string to process
+    this function keeps compatibility with the
+    data processing done in eda after scraping
+    """
+    # tokenize the text and keep only alphabets
     tokens = nltk.tokenize.word_tokenize(text)
     words = [x for x in tokens if x.isalpha()]
+
+    # separate the words with spaces and return it
     text = ' '.join(words)
     return text
 
 def get_reddit_data(query_urls):
-    reddit = praw.Reddit()
+    """
+    Scrapes reddit to get desired posts
 
-    posts = []
+    query_urls: list of reddit links
+    """
+    # get a reddit instance
+    reddit = praw.Reddit(client_id='WI6HW6PU0KWLtQ',
+                client_secret='URXonv9_7VKTgARm3V-tAXH_Jco',
+                 user_agent='indiasubscrape')
+
+    posts = [] # hold post dicts
+
+    # go over urls, one at a time
     for url in query_urls:
+        # get reddit submission for the url
         submission = reddit.submission(url=url)
 
+        # hold data for current submission
         d = dict()
 
+        # map fetched attributes to desired attributes
         d['title'] = process_text(submission.title)
         d['flair'] = submission.link_flair_text
         d['selftext'] = process_text(submission.selftext)
@@ -57,11 +99,20 @@ def get_reddit_data(query_urls):
         d['date_raw'] = submission.created
         d['url'] = url
 
+        # add the data to posts
         posts.append(d)
 
     return posts
 
 def write_reddit_data(data):
+    """
+    Writes scraped data to disk for
+    the prediction model to read
+
+    data: a list of dicts, each dict
+          contains data scraped for url
+    """
+    # writeout scraped data to disk
     with open('application/reddit_posts/data_query.txt', 'w') as f:
         for post in data:
             f.write(str(post['url']))
@@ -69,129 +120,78 @@ def write_reddit_data(data):
             f.write(str(keep_alpha(post['title'])))
             f.write('\n')
 
-def load_posts(filename):
+def load_posts(filename, time_steps):
+    """
+    Load scraped data from disk
+    and return title and url for each
+    post
+
+    filename: file to load dataset
+    time_steps: no of words to get for each data point
+    """
+
+    # hold titles and urls for each post
     load_input = []
     load_url = []
 
-    i = 0
+    # a variable to select which array to write to
+    select_list = 0
     with open(filename, 'r') as f:
         for line in f:
-            if i == 0:
+            # add to url list and toggle
+            if select_list == 0:
                 load_url.append(line[:-1])
-                i = 1
-            elif i == 1:
+                select_list = 1 # the next line is input
+
+            # add sentence to input and toggle
+            elif select_list == 1:
+                # hold current input
                 cur_input = []
-                len_in = len(line[:-1].split()[:25])
-                for i in range(25-len_in):
+
+                # get number of words in current line
+                len_in = len(line[:-1].split()[:time_steps])
+
+                # add spaces before the sentence to get total length to timesteps
+                for _ in range(time_steps - len_in):
                     cur_input.append(' ')
-                for i in line[:-1].split()[:25]:
-                    cur_input.append(i)
+
+                # add the words to complete the input line
+                for word in line[:-1].split()[:time_steps]:
+                    cur_input.append(word)
+
                 load_input.append(cur_input)
-                i = 0
+                select_list = 0 # the next line is url
 
     return (np.asarray(load_input, dtype=np.object), np.asarray(load_url, dtype=np.object))
 
 def load_ft(filename):
+    """
+    Loads the fasttext wordvector model
+
+    filename: name of model
+    """
     fname = os.path.abspath(filename)
     model = fasttext.load_model(fname)
     return model
 
-'''def load_ft(filename):
-    fname = os.path.abspath(filename)
-    model = FastText.load(fname)
-    return model'''
-
-def load_vectors(filename):
-    """
-    Creates vectors for lang in a dict
-    of form {word:embedding}
-    """
-    filein = io.open(filename, 'r', encoding='utf-8', newline='\n', errors='ignore')
-    data = {}
-    for line in filein:
-        tokens = line.rstrip().split(' ')
-        data[tokens[0]] = list(map(float, tokens[1:]))
-    data[' '] = [0.0069633694,-0.0033999255,0.010586381,-0.0006393717,0.011965754,-0.0009611225,-0.017290328,-0.0025544537,-0.00087693986,-0.0020554701,-0.01321163,0.00012053901,0.013346921,-0.006311356,0.003211852,-0.015739692,-0.008041525,-0.01571059,0.0057985648,-0.013242714,-0.0023971163,-0.0074268393,0.004600727,0.0025885534,0.012782362,-0.0062122196,0.002212011,-0.016663603,0.0003671778,0.017689114,0.016025512,-0.01483213,0.015711218,-0.01036233,0.0066601257,-0.009123624,0.0037135174,-0.0069212536,0.010281087,-0.0035295007,0.002849685,-0.010490801,0.0026974797,-0.013000383,0.0036737898,0.015114544,0.017116468,-0.006816537,-0.0074365637,-0.008343396]
-    return data
-
-def get_vectors(input, en):
-    embed_output = []
-    for line in input:
-        cur_line = []
-        for word in line:
-            #print('#debug word: ', str(word))
-            cur_line.append(en[str(word)])
-        embed_output.append(cur_line)
-
-    return np.asarray(embed_output, dtype=np.float32)
-
-'''def get_ft(input, ftmodel):
-    embed_output = []
-    for line in input:
-        cur_line = []
-        for word in line:
-            cur_line.append(ftmodel.wv[str(word)])
-        embed_output.append(cur_line)
-    return np.asarray(embed_output, dtype=np.float32)'''
-
 def get_ft(input, ftmodel):
+    """
+    Get embeddings for input from fasttext model
+
+    input: input to get embeddings for
+    ftmodel: a fasttext model
+    """
+
+    # hold batch converted to embeddings
     embed_output = []
+
+    # convert one line at a time
     for line in input:
         cur_line = []
+        # add embeddings for each word in sentence
         for word in line:
             cur_line.append(ftmodel.get_word_vector(str(word)))
+        # add sentence to batch
         embed_output.append(cur_line)
+
     return np.asarray(embed_output, dtype=np.float32)
-
-def flair_mapping():
-    valid_flairs = ['Politics', 'Non-Political', 'AskIndia', 'Policy/Economy','Business/Finance','Science/Technology', 'Scheduled', 'Sports', 'Food','Photography','CAA-NRC-NPR', 'Coronavirus']
-    map_int = dict()
-    int_map = dict()
-    for i, j in enumerate(valid_flairs):
-        map_int[j] = i
-        int_map[i] = j
-    return map_int, int_map
-
-def load_data(filename):
-    load_input = []
-    load_output = []
-
-    map_int, _ = flair_mapping()
-
-
-    print(map_int)
-    i = 0
-    with open(filename, 'r') as f:
-        for line in f:
-            if i == 0:
-                #print('output: ', line)
-                load_output.append(map_int[line[:-1]])
-                i = 1
-
-            elif i == 1:
-                # truncate sequence to 100 length
-                #print('input: ', line)
-                cur_input = []
-                len_in = len(line[:-1].split()[:25])
-                for i in range(25-len_in):
-                    cur_input.append(' ')
-                for i in line[:-1].split()[:25]:
-                    cur_input.append(i)
-                load_input.append(cur_input)
-                i = 0
-
-    output_probs = []
-    #print('#debug load_output: ', load_output)
-    for i in load_output:
-        prob = [0 for i in range(len(valid_flairs))]
-        prob[i] = 1
-        output_probs.append(prob)
-    #print('#debug load_output_probs: ', output_probs)
-
-    return (np.asarray(load_input, dtype=np.object), np.asarray(output_probs, dtype=np.int32))
-
-def safe_mkdir(path):
-    try:
-        os.mkdir(path)
-    except OSError:
-        pass
