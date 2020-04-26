@@ -78,8 +78,6 @@ class FlairPredict(object):
                         recurrent_regularizer=tf.keras.regularizers.l2(0.6)
                         )
 
-            # attn = tf.contrib.rnn.AttentionCellWrapper(cell, attn_length=7)
-
             # unroll the gru cell and get rnn outputs
             rnn = tf.keras.layers.RNN(cell, return_sequences=True, return_state=True)
             seq_output, out_state = rnn(self.input)
@@ -140,7 +138,6 @@ class FlairPredict(object):
                                             initializer=tf.zeros_initializer())
 
             # construct default one hot for all indices to gather from
-            # as tf.one_hot does not allow specifying depth at runtime
             default_indices = tf.get_variable('default_indices',
                                             initializer=tf.constant([0,1,2,3,4,
                                             5,6,7,8,9,10,11]), trainable=False)
@@ -168,11 +165,9 @@ class FlairPredict(object):
             # this operation gathers from one hot default
             one_hot = tf.gather_nd(self.one_hot_default, indices=max_indices,
                                     name='one_hot')
-            # self.one_hot = one_hot
 
             # elementwise comparison of the one hot vectors
             one_hot_eq = tf.equal(one_hot, self.eval_output)
-            # self.one_hot_eq = one_hot_eq
 
             # convert to a single truth value for which input
             eq_row = tf.reduce_all(one_hot_eq, axis=1)
@@ -181,21 +176,19 @@ class FlairPredict(object):
             # convert truth values to scalar and sum to get no of correct preds
             correct = tf.reduce_sum(tf.where(eq_row, tf.fill(tf.shape(eq_row), 1),
                                                     tf.fill(tf.shape(eq_row), 0)))
-            # self.correct = correct
 
             # update total accuracy by adding accuracy of current batch
             self.acc_upd = self.acc.assign_add(correct)
 
             # get one hot vectors corresponding to correct predictions by model
             indices_correct = tf.where(eq_row)
-            # self.indices_correct = indices_correct
-            # self.one_hot_correct = one_hot_correct
 
             one_hot_correct = tf.gather(self.eval_output, indices_correct)
+            
             # add the gathered vectors to get no of correct predictions per
             # category (flair) in current batch
             correct_cat = tf.reduce_sum(one_hot_correct, axis=0)
-            # self.correct_cat = correct_cat
+
 
             # update accuracy by category by adding accuracy of current batch
             self.cat_acc_upd = self.cat_acc.assign_add(correct_cat)
