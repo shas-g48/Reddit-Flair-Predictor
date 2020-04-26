@@ -98,6 +98,22 @@ India celebrating a new festival or it s just a distraction
 
 ## Loss Curves from some attempts at regularization:
 
+* l2 = 0.6 in kernel dense
+* l2 = 0.4 in kernel output from rnn
+* dropout = 0.5 everywhere except gru
+* max validation = 63.6
+
+![regular-1](images/regular-1.png)
+
+* Everything same, l2 = 0.4 in gru kernel and l2 = 0.4
+* max validation 63.55
+
+![regular-2](images/regular-2.png)
+
+* No dropout
+* All l2 = 0.6
+
+![regular-6](images/regular-6.png)
 
 ## Raw log of regularization attempts
 ```
@@ -122,7 +138,7 @@ dense 1 l2 d1w = 0.6
 dense 1 drop d1dr = 0.5
 dense 2 l2 d2w = 0.6
 dense 2 drop d2dr = 0.5
-last out l2 lsdr = 0.5
+last out lsdr = 0.5
 last out l2 logw = 0.4
 max validation maxv = 63.6
 
