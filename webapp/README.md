@@ -1,8 +1,12 @@
 # Webapp to predict flairs on r/india
 
 ## Run
-* cd into the directory, then 
+* save this file to root of the directory (contains fasttext text embeddings required to run the webapp):
+```
+https://drive.google.com/open?id=1fyu1nFl8vJnnhh6VnC4BpZE8KG85i0VO
+```
 
+* cd into the directory and then run
 ```
 flask run
 ```
