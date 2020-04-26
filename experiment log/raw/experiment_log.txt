@@ -1,0 +1,834 @@
+1. set up full training + eval skeleton
+	separated training and validation data N/5
+2. Pick a simple model that can't be screwed up
+	Picked up a lstm
+		Simplifications:
+			embedding size set to 50
+			Input size set to 25
+			GRU hidden units set to 30
+3. Fixed random seed to 10
+4. No fanciness in data
+5. Set up eval with metric
+	I can measure performance by (tensorboard):
+		loss over batches of training
+		total acc over complete validation set at every epoch
+		acc by cat over complete validation set at every epoch
+6. Verify starting loss
+	Should be 2.48 getting 2.87 (need to find out why) (but this is mean)
+	Verified loss function by manually finding loss.
+	Verified output logits dims
+7. Set correct bias for logits
+	found the bias but adding it would mean not using library's
+	softmax cross entropy to manually add bias in probabilities,
+	or figuring out the correct bias to add in the logits, which
+	can be done but network can learn bias on it's own
+8. Verify input independent baseline
+	input independent baseline (max from graph) (25 epochs)
+		total: 4285
+		cat0: 724
+		cat1: 4214
+		cat2: 963
+		cat3: 161
+		cat4: 53
+		cat5: 10
+		cat6: 1
+		cat7: 1
+		cat8: 0
+		cat9: 2
+		cat10: 0
+		cat11: 6
+	When actually feeding in data:
+		total: 5875
+		cat0: 3016
+		cat1: 3766
+		cat2: 460
+		cat3: 120
+		cat4: 8
+		cat5: 1
+		cat6: 1
+		cat7: 1
+		cat8: 0
+		cat9: 0
+		cat10: 0
+		cat11: 3
+	Inference:
+	How I know the network is learning something from the data:
+		1. in input independent case, it is unable to increase
+		total accuracy beyond a level, first it just learns the
+		dataset output bias (the raw probabilities of occurence
+		of each category), then it goes clueless as it does not
+		know what signal is coming from where.
+		2. in input independent case changes in category
+		accuracy are less drastic than when input is actually
+		fed, because the network actually has same input 
+		for all sentences, whereas when input is actually fed,
+		it greedily increases accuracy of a few categories to get a
+		higher total accuracy as it is able to identify the
+		input. This can also be seen by the much higher value
+		of cat0 in actual input than input independent, it
+		can be more aggressive as it knows where the signal is coming
+		from
+	Some roadblocks:
+		The network is doing a good work on total accuracy, 
+		but at the cost of decreasing accuracy classes other
+		than majority. As this is not the actual architecture
+		I'll use, I'm not taking a action now and will see if
+		the network behaves well in the future, if it does
+		not I'll have to tackle the class imbalance directly.
+	More analysis done:
+		I reduced seq length from 25 to 10, as I had found
+		during eda that on avg seq length is diff for the classes
+		I got similar results to actual data with 25 words, 
+		but less max values, which tells that the network is
+		not just working on the length of the data
+	Possible errors in current analysis:
+		Maybe the smaller data does not represent the actual
+		data distribution as I just did:
+			head -n <nu_of_lines> data > smaller_data
+		Will be checking if the distribution is indeed correct.
+		My doubt was true, the counts were:
+			[97, 97, 0, 0, 8, 25, 0, 9, 0, 0, 1, 13]
+		That is why the cat2 went to zero!
+		Now I'll manually create smaller datasets from the training 
+		by following similar method as done in eda
+	Action taken:
+		Separate dataset and do 6-8 again
+6-2. Verify starting loss
+	Should be 2.48 and got 2.48
+7-2. Set correct bias for logits
+	Skipping again, same argument as 7.
+8-2. Verify input independent baseline
+	Note: dataset used for training: data_correct_med.txt
+			Stats: [3916, 3572, 2304, 774, 1310, 724, 92, 327, 181, 340, 6, 346]
+			Total: 13892
+	      dataset used for validation: data_valid.txt
+			Stats: [4895, 4465, 2881, 967, 1638, 904, 114, 409, 226, 426, 8, 433]
+			Total: 17366
+	input independent baseline (25 epochs) (max, last)
+		total: 3224, 3101 (decreasing)
+		cat0: 701,701 (strictly increasing)
+		cat1: 2305,1986 (strictly decreasing)
+		cat2: 530, 370 (strictly decreasing)
+		cat3: 27, 16 (decreasing)
+		cat4: 36, 28 (increasing, bell shape)
+		cat5: 0, 0 (constant)
+		cat6: 1, 0 (decreasing)
+		cat7: 0, 0 (constant)
+		cat8: 0, 0 (constant)
+		cat9: 0, 0 (constant)
+		cat10: 0, 0 (constant)
+		cat11: 0, 0 (constant)
+		acc % (calculated manually) = 18.5%
+	When actually feeding in data:
+		total: 9405, 9405 (strictly increasing)
+		cat0: 3714, 3595 (decreasing, fluctuating at a high value)
+		cat1: 2434, 2399 (increasing)
+		cat2: 2064, 2054 (increasing)
+		cat3: 199, 199 (strictly increasing)
+		cat4: 817, 787 (increasing, bell shape)
+		cat5: 87, 87 (strictly increasing)
+		cat6: 63, 63 (increasing)
+		cat7: 118, 118 (strictly increasing)
+		cat8: 0, 0 (constant)
+		cat9: 93, 93 (strictly increasing)
+		cat10: 0, 0 (constant)
+		cat11: 10, 10 (increasing)
+		acc % (calculated manually) = 54.15%
+	Inference:
+	How I know the network is learning something from the data:
+		1. Total accuracy increases when actual data is fed and 
+		decreases when zeros are fed instead. Maximium and final
+		both are much higher than input independent baseline.
+		2. When feeding in zeros, model just learns to output
+		dominant class, increasing its accuracy, while almost all
+		others decrease. This is the most efficient ways when you
+		don't know anything about the input, just output class with
+		max in batch, while when input is actually fed, network
+		can see where the signal is coming from, and this
+		results in increase in accuracy among almost all cats
+	Possible roadblocks:
+		1. cat10 and cat8 remain constant at zero.
+		2. There is very little data for cat10
+		3. There is less data for cat8, but this is also 
+		true for cat6, so the problems can be:
+			1. Title length of cat8 is too small, or mostly noise
+			2. There is very little structure in cat8 titles
+			3. some bug in the code
+	Action Taken:
+		Not taking action now, but if same behavior, will conduct eda again
+		(unable to fit cat8 even when less imbalance)
+		For cat10 data size is mostly at fault in my opinion
+9. Overfit one batch
+	Method: Set training set and validation set same, to a small dataset
+		Wait till loss -> zero
+		See that accuracy is maximum
+	Note: Same dataset used for training and validation (data_small_tiny.txt)
+		Stats: [56, 52, 33, 12, 19, 11, 2, 5, 3, 5, 1, 5]
+		Total: 204
+		lr = 1e-3
+	Result:	The model completely fit the training data and loss went down to 0.01
+	Inference: The model is capable of reaching zero loss on a tiny dataset, no
+		major bug is there in the code
+10. Verify decreasing training loss:
+	Method: Verify underfitting in current model on a medium size dataset
+		This happens when model is unable to cross a certain accuracy level
+		due to lake of available weights. Can be seen easily by decreasing lr
+		so that wiggling does not happen due to a large lr, and seeing if
+		loss and accuracy starts fluctuating and reaches some level which
+		it cannot break through in a finite time period.
+	Note: Same dataset for training and validation (data_small_keep_all_cats.txt)
+		Stats: [1958, 1786, 1152, 387, 655, 362, 46, 164, 91, 170, 3, 173]
+		Total: 6947
+		lr: 3e-4
+		gru hidden units = 30
+		epochs = 500
+	Result: Model struggles to classify the last 1000 points
+		Accuracy starts fluctuating at about 240 epochs (stops increasing strictly)
+		Loss is unable to go below 0.3 and starts fluctuating around 0.45
+		Maximum accuracy 6020 at 500 epochs
+	Claim: Increasing model capacity just a little will reach same accuracy and loss in less time.
+	Note: Kept all other params same but increased gru hidden unit size to 50
+	Result: Model reaches maximum accuracy 6913 at 483 epochs
+		Loss goes much lower than 0.3 reaching less than 0.05 and even lower avg loss sometimes
+		Model exceeds previous baseline by reaching 6103 in just 133 epochs.
+	Additional Notes: While increasing from 30 -> 50 is increasing the number of weights too much,
+		increasing it a little bit will also give gains albeit less
+	Inference: Model is underfitting in current capacity (30 hidden units) on 6947 data points
+		Increasing the model size leads to a decrease in loss and increase in accuracy.
+11. Visualize all inputs to model just before it enters it
+	Verified encoding of output to one hot in data loader
+	Verified dims of input: (16, 25, 50) (batch_size, time_steps, embedding_size)
+	Verified dims of output: (16, 12) (batch_size, no_of_cats)
+	All inputs can be visualized just before entering by doing dimensionality reduction and 
+	plotting on a graph. I know distribution of output from eda, and distribution of input
+	depends on the size of embedding used and the specific words. By plotting this and using
+	the labels, maybe I can find which words are more important for which category.
+	Action taken:
+		Skipping for now as this can be done by our intuition about language, but this can be 
+		useful to find things we don't expect to change the output.
+12. Visualize Prediction dynamics:
+	Visualizing previous graphs, The loss graph of gru with 50 units indicates a optimal loss
+	function decrease, but can be sped up by increasing the lr
+	The loss graph of gru with 30 units indicates a low lr initially and underfitting later
+13. Check for mixing across batch/ use backprop to chart dependencies
+	I checked the dims of all 'checkpoints' in the graph and they seem fine
+	Then I went to tensorboard graphs to check if the connections to gradients
+	were as expected, and they were. Only output is Adam and inputs are rnn, dense,
+	loss and inference as expected.
+14. Generalize a special case, write loopy code before vectorized
+	Tensorflow performs better with vectorized code, and already I have checked most 
+	of the 'checkpoint' by setting them as self.'node to check' = 'node to check' and 
+	then printing the result after retrieving it from sess.run()
+extra. Overnight baseline on big dataset:
+	Note: Dataset for training: data_train.txt 
+		Stats: [19578, 17855, 11519, 3865, 6548, 3615, 455, 1632, 902, 1699, 27, 1727]
+		Total: 69422
+	      Dataset for validation: data_valid.txt
+		Stats: [4895, 4465, 2881, 967, 1638, 904, 114, 409, 226, 426, 8, 433]
+		Total: 17366
+		lr = 6e-4
+		epochs = 537
+		hidden units = 70
+	Result: Network achieves maximum accuracy of 10145 of 17366 (0.578) at 22 epochs
+		and then falls down to ~9600 of 17366 ((0.552) after 50 epochs and never seems
+		to escape from 9300-10000 accuracy, fluctuating in the range. 
+		The loss achieves a minimum of ~0.3 for a single epoch but after smoothing the curve,
+		it never goes below 0.8, which shows signs of underfitting. (lr was set low because
+		I didn't want it to fluctuate because of a high lr, and the epochs were set high so that
+		the network had sufficient time to change despite the low lr)
+		All this tells that the current network architecture does not have the capacity
+		to even learn the training set completely.
+		At 537 ep, correct by cat: [[3536 2363 1786  242  881  204   70  167   25  126    0  158]]
+
+15. Choose a correct architecture for the data by focusing on the training loss
+	Method: Find the decrease in training loss for same number of epochs
+		for network architectures that take the same time to train (counting 
+		no of weights is better but time matters much more in my opinion
+		to compare similar structures)
+		Right now I'm trying to find the 'structure' that works best to decrease
+		the loss.
+		Time to train one epoch: 11 sec (on cpu)
+		Total time: 11 + 3 = 14 sec
+		Time to test 50 epochs = 12 mins
+		lr = 1e-3
+	Models to iterate on:
+		gru single layer
+		gru multiple layer
+		gru multiple layer with different no of hidden units
+		increase final fc capacity only
+		bidirectional rnn
+		all the above with attention
+		I'll measure decrease in loss and no of epochs to achieve it
+		while right now gru multiple + attention seems tempting, only the analysis
+		can tell what model to choose
+		Also I can test the embedding size's effect on performance, there is already
+		a paper on it I found.
+		I am using the same dataset for training and testing, as I have to see which overfits better
+	Tested:
+		Test1: gru 30 hidden units simple
+			lowest loss = 1.022 (start loss 1.624) (delta = 0.602)
+			epochs to reach this = 50 (used all)
+			total acc max = 8751 (46 epochs)
+		Test2:	gru 15 hidden units, 2 layer stacked (time to train one ep ~12-13 sec)
+			lowest loss = 1.138 (start loss 1.674) (delta = 0.536)
+			epochs to reach this = 50 (used all)
+			total acc max = 8528 (50 epochs)
+			Inference: I thought this would perform better as it would learn a higher
+			representation of the data, maybe the issue is data bottle neck from the bottom
+			layer, lets increase bias towards input
+		Test3: gru bias towards input 20+10 hidden units in layers (time to train one ep ~12-13 sec)
+			lowest loss = 1.113 (start loss 1.685) (delta = 0.572)
+			epochs to reach this = 50 (used all)
+			total acc max = 8679 (50 epochs)
+			Inference: Better than 2 but worse than 1)
+		Test4: gru bias towards output (should be worse than all) 10+20
+			lowest loss = 1.169 (start loss 1.655) (delta = 0.486)
+			epochs to reach this = 50 (used all)
+			total acc max = 8313 (50 epochs)
+			Inference: As expected, worst performance till now
+		Test5: gru encoder decoder [12,7,11]
+			lowest loss = 1.241 (start loss 1.769) (delta = 0.528)
+			epochs to reach this = 50 (used all)
+			total acc max = 8138 (50 epochs)
+			Inference: Even worse due to information bottleneck in getting input
+		Test6: increase fc + use relu in middle layer (30 hidden, 60 dense + relu , 12 output dense)
+			lowest loss = 0.915 (start loss 1.587) (delta = 0.672)
+			epochs to reach this = 50 (used all)
+			total acc max = 9149 (47 epochs)
+			Inference: The best model till now, combination of 1 + additional fc
+			This seems to give a nice performance boost without much performance penalty
+			(time to train a epoch ~10.5 sec near to 1.)
+			Will test different activations and also will increase hidden size
+			to check if there is still boost with more hidden units.
+			If it is true will include layers in final fc.
+		Test7: increase fc and no activation
+			lowest loss = 1.005 (start = 1.585) (delta = 0.58)
+			epochs to reach this = 50 (used all)
+			total acc max = 8972 (48 epochs)
+			Inference: Worser than fc + relu, will check tanh
+		Test8: increase fc + tanh in middle layer
+			lowest loss = 0.945 (start loss = 1.575) (delta = 0.63)
+			epochs to reach this = 50 (used all)
+			total acc max = 9278 (50 epochs)
+			Inference: It was able to get a result on cat10 surprised me, 
+			which relu didn't catch despite lower final loss. 
+			Again, Performance gain is good with very little penalty
+		Test9: bidirectional rnn (15 hidden unit each in fw, bw)
+			lowest loss = 1.172 (start loss = 1.687) (delta = 0.515)
+			epochs to reach this = 50 (used all)
+			total acc max = 8284 (50 epochs)
+			Inference: Decreasing hidden size just to have bidirectional 
+			does not seem logical, maybe this will change when hidden size increases
+			and gain from having more < having 2 directions, but for now, it has the 
+			worst performance
+		Test10: attention + simple gru (time to train one epoch = 11-12 sec)
+			lowest loss = 0.981 (start loss = 1.596) (delta = 0.615)
+			epochs to reach this = 50 (used all)
+			total acc max = 9073
+			Inference: Better than simple gru, But I am skeptical as I have implemented 
+			this attention mechanism from scratch, Maybe this performance increase
+			is just due to increase in final output size, the increase in total acc
+			is a good sign that attention is working, but loss should have been much lower.
+			Compared to simple gru, cat8 received a boost, graphs of cat0, and cat2 show
+			completely opposite behavior, cat9 seems completely unaffected, cat10 is still
+			zero.
+			I'll combine the sota till now with this just for fun to see what happens.
+		Test11: attention + simple gru + 60 dense + relu (time to train one epoch = 12-13 sec)
+			lowest loss = 0.8705 (start loss = 1.602) (delta = 0.7315)
+			epochs to reach this = 50 (used all)
+			total acc max = 9225 (50 epochs)
+			Inference: Better performance than just atttention and just relu, the lowest
+			loss till now. Both were not able to catch cat11 and neither was this able
+			to catch it. Combining attention with tanh should give higher loss 
+			than this but better accuracy. I am still skeptical about performance of
+			my attention module, and Test 13 will check it
+		Test12: attention + simple gru + 60 dense + tanh (time to train one epoch = 12-13 sec)
+			lowest loss = 0.856 (start loss 1.602) (delta = 0.746)
+			epochs to reach lowest loss = 50 (used all)
+			total acc max = 9328 (48 epochs)
+			Inference: Loss also is the lowest, which I had not expected. Total acc is 
+			maximum, which I had predicted already. But this does not detect cat11,
+			while pure tanh does.
+		Test13: Attention skepticism test:
+			First get input independent baseline
+				Note: Input is being fed, but both attention and gru outputs are masked to
+					zero
+				lowest loss = 1.906 (start loss = 2.242)
+				epochs to reach this = 50 epochs
+				total acc max = 3916 (0 epochs)
+				Inference: Network has constant total acc, which is just the total no of data points
+				having majority in training (same as testing as both datasets are same). It just
+				learns to output majority all the time.
+			Test 13.1: Mask attention output to zero, acc should be near simple gru
+				lowest loss = 1.004 (start loss = 1.639)
+				epochs to reach this = 50 epochs
+				total acc max = 9024 (50 epochs)
+				Inference: Loss is near simple gru, while total acc increased. This maybe due
+				to increase of weights alone. Acc is close to attention.
+			Test 13.2: Mask gru output to zero, acc should be better than input independent
+				lowest loss = 1.035 (start loss = 1.649)
+				epochs to reach this = 50 epochs
+				total acc max = 8685 (50 epochs)
+				Inference: Attention has some data which works even when 
+				last output of rnn is masked out.	
+			Test 13.3: Random numbers instead of attention output should be worse than actual, maybe even					
+				lower than simple gru
+				Note: The random numbers are same across rows, as broadcasting is used to get
+				random vector of current batch size
+				lowest loss = 1.004 (start loss = 1.631)
+				epochs to reach this = 50 epochs
+				total acc max = 8828 (43 epochs)
+				Inference: Both metrics are worse than simple gru with attention as expected
+			Additional Note: The attention module is not actual attention, as we cannot access the hidden
+				state of every cell using tf.dynamic_rnn api, I am using the outputs at each timestep
+				instead. Actual attention will work much better. As this is just a hacked together
+				solution, I'll use it only if the results compel me to, and similar performance gain
+				can't be achieved by other means.
+		Test14: multiple fc layers. I can count weights easily so this comparison
+			will be fair.
+			Test 14.1 add 60 + 60 dense (weights = (30*60) + 60 + (60*60) + 60 + (60*12) + 12 = 6252
+				lowest loss = 0.9618 (initial = 1.563) (delta = 0.6012) 
+				epochs to reach this = 50
+				total acc max = 8948 (50 epochs)
+			Test 14.2 add x dense (weights = (30*x) + x + (x*12) + 12 = 6252 x=145.11, 145 gives 6247,
+			much closer than 6290
+				i.e. add 145 dense
+				lowest loss = 0.948 (initial = 1.577) (delta = 0.629)
+				epochs to reach this = 50
+				total acc max = 9181 (50 epochs)
+			Inference: The first layer form gru output can use a expansion in size, by using a big
+			dense layer. 
+
+			Additional Note: I forgot to set random seed for python program wide and only set tensorflow 
+			and numpy's random seed. Hence I cannot reproduce the above results again. I will try to 
+			update tests that were too close with fixed seed. Changing the seed has an effect on performance,
+			but if system is robust, this effect won't depend too much on the seed. Still a fixed seed
+			is much better if someone wants to replicate the results exactly each time.
+			What this means: Many of the fringe cases above may be just due to having a better
+			random seed by chance. Like tanh proving better than relu for finding cat11. These
+			cases need re-evaluation.
+			What this also means that if I re-evaluate all results for a single seed, they may
+			not be same as if I did them with a different seed.
+			I can remove the randomness, but then again order in which data is fed can affect results.
+			The idea is not to take the above results as too rigid.
+
+Note: I am doing model iteration again, this time results will be reproducible
+The embedding size has changed from 50 -> 32, training is faster due to 
+saving vectors of words in training and validation datasets, and this
+time, I'll report results (with training curves for seed = 10 only), but
+will evaluate on seeds 10, 83, 152 and report the average.
+
+As now using 3 seeds, epochs kept same: at 50, to keep time reasonable
+
+The curves will correspond to same dataset, ie training and validation
+will be same, as for now goal is to find out which model overfits the training
+dataset faster and achieves maximum accuracy on the same dataset.
+
+Note that the base is 1., and all changes are made on this
+
+First I tried overfitting on a tiny dataset (data_small_tiny.txt), it did,
+so I'm good to go
+15-2 Choose a correct architecture for the data by focusing on training loss
+	Common params: 
+		Dataset used: data_correct_med.txt (same for train and validation)
+		Stats: [3916, 3572, 2304, 774, 1310, 724, 92, 327, 181, 340, 6, 346]
+		Total: 13892
+		lr = 1e-3
+		time to train one epoch = ~5.8 sec (total = 5.8+1.5 (eval) = 7.3 sec)	
+		all metrics evaluated at end of training, i.e. 50 epochs
+		loss (last_s1, start_s1, delta_s1), ..
+		total acc (acc_s1, acc_s2,.)
+		
+		abbreviation = (tte, time to train epoch)
+	1. simple gru (50 units)
+		loss = (0.486, 1.447, 0.961), (0.470, 1.430, 0.960), (0.462, 1.450, 0.988)  
+		total acc = 11404, 11079, 11286
+		loss avg = 0.4726..
+		acc avg =  11256.33..
+	1.1. simple gru (30 units) (Will decreasing no of hidden units in gru make fitting difficult?) (tte = 5.2 sec)
+		loss = (0.7838, 1.508, 0.7242), (0.773, 1.545, 0.772)
+		total acc = 10170, 9976
+		loss avg =  0.7784
+		acc avg =  10073
+		Result: Stopped at 2, as it is obvious that this is worse than 1.
+		Inference: Increasing hidden units does make fitting easier
+	1.2 increase no of unrolls to 30 (Will increasing unrolls make fitting easier?) (tte: 7.14 sec)
+		loss = (0.479, 1.45, 0.971), (0.458, 1.432, 0.974), (0.507, 1.452, 0.945) 
+		total acc = 11442, 11399, 11322
+		loss avg = 0.481
+		acc avg = 11387.6..
+		Inference: Increasing no of unrolls increases accuracy, can increase it a little (data fed was also changed acc.)
+	1.3 Set all to lower() (Embedding change) (Will keeping case uniform give increase in accuracy?)
+		loss = (0.481, 1.445, 0.964), (0.478, 1.432, 0.954), (0.488, 1.445, 0.957)
+		total acc = 10963, 11200, 11094
+		loss avg = 0.4823..
+ 		acc avg = 11085.6..
+		Inference: Changing to lower does not affect performance much, as fasttext can deal with data regardless of case.
+	2. gru 2 layers each of 25 units (Will splitting into 2 equal layers make fitting easier?)
+		loss = (0.7247, 1.54, 0.8153), (0.719, 1.518, 0.799) 
+		total acc = 9964, 10080
+		loss avg = 0.7215
+		acc avg = 10022
+		Result: Stopped at 2, as it is worser than 1.
+		Inference: Splitting into equal layers won't give performance increase if hidden units are already less.
+	3. gru 2 layers 30+20 bias input (Will increasing hidden size towards input be better than 2?)
+		loss = (0.6837, 1.533, 0.8493), (0.650, 1.526, 0.876), (0.662, 1.514, 0.852)
+		total acc = 10292, 10589, 10506
+		loss avg = 0.665
+		acc avg = 10462.3..
+		Inference: In 2. input was getting bottlenecked, still not as good as 1. (atleast with total 50 hidden units)
+	4. gru 2 layers 20+30 bias output (Will increasing hidden size towards output be better than 2?)
+		loss = (0.7744, 1.56, 0.7856), (0.766, 1.517, 0.751)
+		total acc = 9641, 10037
+		loss avg = 0.7702
+		acc avg = 9839
+		Result: Stopped at 2, worser than 3. and 2., 1. is still better
+		Inference: Bottlenecking input leads to a decrease in performance
+	5. gru encoder decoder 20+10+20 (Does creating a info bottleneck in cell help?)
+		loss = (0.8659, 1.616, 0.7501), (0.855, 1.567, 0.712)
+		total acc = 9593, 9722
+		loss avg = 0.86045
+		acc avg = 9657.5
+		Result: Stopped at 2, as worser than 2., 3., 4.
+		Inference: Worst of all split layers, won't increase performance without tte taking a significant hit
+	6. gru fc + relu (gru output -> 60 fc +relu -> 12 fc output) (tte = ~5.5-6.5 sec)
+		loss = (0.2918, 1.442, 1.1502), (0.318, 1.420, 1.102), (0.328, 1.421, 1.093)
+		total acc = 11551, 11733, 11509
+		loss avg = 0.3126
+		acc avg = 11597.6..
+		Inference: This has best performance till now.
+	7. gru fc + no activation (same as above without activation)
+		loss = (0.3987, 1.372, 0.9733), (0.3887, 1.3889, 1.0002), (0.3974, 1.3925, 0.9946)
+		total acc = 11016, 11590, 11030
+		loss avg = 0.39493..
+		acc avg = 11212
+		Inference: Performance drop compared to using nonlinearity
+	8. gru fc + tanh activation (only nonlinearity changed in 6.)
+		loss = (0.3102, 1.4037, 1.0935), (0.3303, 1.3868, 1.0565), (0.3471, 1.3884, 1.0413)
+		total acc = 11803, 11998, 11565 
+		loss avg = 0.3292
+		acc avg = 11788.6..
+		Inference: Very close to 6. one has higher accuracy, other has better loss. But it is clear than nonlinearity is better
+	9. gru bidir (25 each in fw, bw) (tte ~6-7 sec)
+		loss = (0.7747, 1.5586, 0.7839), (0.7640, 1.532, 0.768)
+		total acc = 10193, 10161
+		loss avg = 0.76935
+		acc avg = 10177
+		Result: Stopped at 2, as it is worser than 1.
+		Inference: Loss increases a lot if just split up a network, not as good as 1. (atleast with total 50 hidden units)
+	10. attention + simple gru
+		10.1 attention length = 20 (tte = 26 sec+ ~3-4 sec eval)
+		    	loss = 0.526
+		     	total acc = 11202 (11337 max)
+			Result: Very dramatic training curves, big slowdown in training and evaluation
+				due to slowdown in inference/ backprop. Need to tune the parameters.
+		10.2 attention length = 7 (tte = 19 sec + ~2.5 sec eval)
+			loss = 0.4346
+			total acc = 11251 (11340 max)
+			Result: Less dramatic, but still fluctuate a lot, a little less slowdown but still
+				unacceptable. 
+			Additional Notes: The network struggles with cat11, which has very little examples
+					compared to rest, it goes like 0-4-6-0-5 (example sequence).
+		10.3 attention length = 20, attention size = 25 (tte = 24 sec + ~2.6 sec eval)
+			loss = 0.4166
+			total acc = 11210
+			Result: Better loss curve, training still fluctuates, still too much compute
+		10.4 attention length = 20, attention vec size = 25 (tte = 24 sec + ~3 sec eval)
+			loss = 0.4438
+			total acc = 11462 
+			Result: Worser loss curve than 10.3, better than 10.1, accuracy curve near 10.3
+		10.5 attention length = 5, attention size = 15, gru hidden units = 30 (tte = ~13-15 sec + ~2 sec eval)
+			loss = 0.763
+			total_acc = 9978
+			Result: Worst of all attention configs used. But time to train is reasonable
+		10.6 attention length = 5 (tte ~17-18 sec + 2.5 sec eval)
+			loss = 0.4757
+			total acc = 10467 (10777 max)
+			Result: Better than 10.5 and 10.1
+		10.7 attention length = 6, attention size = 30, batch_size_train = 64 (tte = 7 sec + 2 sec eval)
+			loss = 0.5747
+			total acc = 10568 (10572 max)
+			Result: Bigger batch size prevents networks with attention to fluctuate too much
+		10.8 attention length = 7, batch_size_train = 64, epochs = 70 (tte = 9 sec + ~2.4 sec eval)
+			loss = 0.437
+			total acc = 11394
+			Result: same as 10.7
+		10.9 attention length = 7, batch_size_train = 128, epochs = 100  (tte = 7 sec + ~2.4 sec eval)
+			loss = 0.3552
+			total acc = 11682 (11805 max)
+			Result: Bigger batches is the way to go when using attention
+	11. Custom attention module (tte = ~8 sec + ~1.6 sec eval)
+		loss =  (0.418, 1.41, 0.992), (0.429, 1.418, 0.989), (0.440, 1.416, 0.976)
+		total acc = 11442, 11660, 11344
+ 		loss avg = 0.429
+		acc avg = 11428
+		Inference: Better than simple gru (50 hu), this hacked together code can be used if gives a benefit
+			in final performance
+		Note: Not running skepticism tests, as they should be same regardless of the seed. (inference will be same)
+	12. Add stacked dense:
+		12.1: 60 + 60 + 12 fc ((50*60)+(60)+(60*60)+60+(60*12)+12 = 7452 weights)
+			loss = (0.249, 1.383, 1.134), (0.243, 1.376, 1.133), (0.247, 1.379, 1.132)
+			total acc = 11686, 11976, 11938
+			loss avg = 0.2463..
+			acc avg = 11866.6..
+		12.2: 118 + 12 fc solving this: (50*x)+(x)+(x*12)+12 = 7452 gives 118.10 
+			loss = (0.273, 1.365, 1.092), (0.297, 1.371, 1.074), (0.316, 1.362, 1.046)
+			total acc = 11861, 11808, 11701
+			loss avg = 0.2953.. 
+			acc avg = 11790
+			Inference: loss decreases with stacking, accuracy nearly same
+	13. Embeddings:
+			I was training embeddings, and fasttext documentation recommends checking out nearest word
+			vectors to see the quality of embeddings. As of fasttext 0.9.1, this functionality is not 
+			present in the python module, so I grabbed the binary and ran some tests.
+
+			The result of the test was that the embeddings learnt differed with the 'sorting' of data given,
+			i.e. if data^ is sorted by flair, randomly shuffled, or the mention of flairs removed from corpus.
+			In randomly shuffled and sorted by flair, flairs get a high similarity to each other, like if I query
+			'Politics' I get 'Non-Political', along with 'Business/Finance' and also 'Photography', the last one
+			obviously not related much to 'Politics'.
+
+			This behavior is not present in embeddings learnt from data having flairs removed, which is looks good,
+			but still, the choice will be dictated by result of the tests. I decided to run some tests to find out 
+			which embedding trains better.
+
+			Also nearest words to AskIndia, askindia differ, with the former biased towards flairs in 13.2 and 13.3,
+			while no such thing in 13.1
+			This also explains the lower performance of 1.3 it obviously mixed up the flair AskIndia with askindia etc.
+
+			^format flair\ntitle for 13.2, 13.3 and title for 13.1
+
+			Dataset used = data5_valid.txt (both for training and validation)
+			Stats: 
+		13.1 Titles only:
+			loss = (0.6357, 1.351, 0.714), (0.6391, 1.349, 0.709), (0.631, 1.349, 0.718)
+			total acc = 18635, 19050, 18917
+			acc max = 18735, 19050, 19054 
+			loss avg = 0.63526.. 
+			acc avg = 18867.3..
+			acc max avg = 18946.3.. 
+		13.2 Flairs shuffled (Used till now):
+			loss = (0.6059, 1.300, 0.6941), (0.6133, 1.301, 0.6877), (0.6103, 1.304, 0.6937) 
+			total acc = 19188, 19155, 19314 
+			acc max = 19188, 19215, 19369
+			loss avg = 0.60983..
+			acc avg = 19219
+			acc max avg = 19257.3..
+		13.3 Flairs sorted:
+			loss = (0.6232, 1.323, 0.6998), (0.624, 1.325, 0.701), (0.6333, 1.339, 0.7057)
+			total acc = 19268, 19376, 18760
+			acc max = 19268, 19376, 18786
+			loss avg = 0.62683..
+			acc avg = 19134.6..
+			acc max avg = 19143.3..
+		Inference: The performance of all is neck to neck, which means the network does most of the heavy lifting
+			   13.2 is better in all criteria, albeit by a tiny margin. As fortunately I have not changed the 
+			   case of all to lower while preprocessing, I think it will be okay to use any, and they will
+			   give nearly same performance.
+			   What I was worrried about was 13.2 and 13.3 would have a lower performance than 13.1, due to 
+			   repeated flairs and their unnatural relations being induced. But now I can use 13.1 to be sure
+			   that it has no effect on training, while I can switch to 13.2 or 13.3 if I get a significant accuracy boost
+
+15-2.1 All inferences together:
+	1. Increasing hidden units make fitting easier
+	2. Increasing unrolls allow more input to come in, resulting in better performance (upto a limited amount)
+	3. Stacking cells / bidir does not increase performance if looking for equivalent tte
+	4. Attention can increase accuracy, but needs bigger batches and makes training less stable
+	5. Adding fc layers increases performance, and nonlinearities make task easier
+	6. Custom attention code does seem to increase acc.
+	7. Of all the modifications, adding the attention wrapper increases tte the most, making it unreasonable at times
+	8. lowering case and not changing case has nearly same performance, as fasttext handles it.
+
+15-2.2 Some math first:
+Printing out trainable params, I found the following:
+Gru related: 
+	(82,100) (100,)
+	(82,50) (50,)
+Dense
+	(50,12) (12,) (50 * 12) + 12 = 612 which total to 13062 params
+If N/10 is considered, these much should be enough to get a good loss on data5_train.txt,
+But still, no of params will be kept under control.
+
+15-3 Overfit on data5_train.txt: Keeping the insights gained from model iteration in mind, try to overfit on data5_train.txt
+	1. 50 hu + 50 unrolls + 128 bs + normal embeds + fc 120 tanh + fc 60 tanh (seed 10)
+		loss = 0.5802 (300 ep)
+		acc max = 65022
+		acc end = 64428
+		loss keeps decreasing but network starts struggling after 83 epochs
+	2. 50 hu + 50 unrolls + 32 bs + normal embeds + fc 120 tanh + fc 60 tanh (seed 10)
+		loss = 0.6846
+		acc max  = 63281
+		acc end = 63015
+		Visualizing training dynamics tells me something is wrong with the lr, will try some different rates
+	3. Increase lr to 1e-2 + bs 128 (expect to see high learning rate loss curve)
+		loss = >1.7
+		As expected, the loss went up and the accuracy diverged
+	4. Decrease lr to 1e-4 + bs 128 (try to get a low lr curve) (a downward slight slope)
+		loss = 0.972 (~100 eps)
+		acc end = 58375
+	5. 60 hu + 50 unrolls + 256bs + normal embeds + fc 240 tanh + gc 20 tanh (seed 10)
+		loss = 0.6365 (80 eps)
+		acc end = 65106
+15-4 Overfit baseline:
+	1. Config: lr 1e-3
+		   bs 256
+		   ts = 50
+		   hu = 60
+		   240 fc + 120 fc + tanh
+		   seed = 10
+		   300 epochs
+		   training accuracy = 95%
+		   loss = 0.168
+		   validation acc = 54%
+15-5 Overfit on the full train dataset (get > 90% accuracy constantly for some epochs)
+	2. bs 256 + ts 50 +hu 60 + 60 fc (tanh) + 250 eps
+		Training results:
+		time to train one epoch 249 : 35.573702335357666
+		average loss at epoch 249 : 0.7030553931757908
+		#debug time to eval:  16.408817291259766
+		#debug got total correct 57946 out of 76111: 
+		#debug correct by category:  [[19823 15420  8673  2676  4633  2389   343  1350   509   764    14  1352]]
+		#debug % accuracy: 0.7613354180079095
+
+		Validation results:
+		#debug time to eval:  4.288350582122803
+		#debug got total correct 14550 out of 25360: 
+		#debug correct by category:  [[5581 3594 2313  511 1082  492  107  301  120  123    1  325]]
+		#debug % accuracy: 0.5737381703470031
+	3. bs 256 + ts 50 + hu 50 + 60 fc + 120 fc (tanh) + 270 eps
+		Training Results:
+		time to train one epoch 269 : 25.265088081359863
+		average loss at epoch 269 : 0.5199082897813528
+		#debug time to eval:  12.57107663154602
+		#debug got total correct 63054 out of 76111: 
+		#debug correct by category:  [[20290 17390  9350  3229  4909  2905   401  1477   717   893    25  1468]]
+		#debug % accuracy: 0.828447924741496
+
+		Validation results:
+		#debug time to eval:  4.185575485229492
+		#debug got total correct 13935 out of 25360: 
+		#debug correct by category:  [[5266 3667 2108  416  999  486  107  325  118  130    0  313]]
+		#debug % accuracy: 0.54948738170347
+	4. bs 256 + ts 50 + hu 50 + 240 fc + 120 fc (tanh) + 244 eps
+		Training results:
+		time to train one epoch 244 : 25.156656503677368
+		average loss at epoch 244 : 0.2012957275263815
+		#debug time to eval:  12.600724220275879
+		#debug got total correct 72130 out of 76111: 
+		#debug correct by category:  [[21992 19884 11081  4149  5752  3518   430  1593   818  1158    26  1729]]
+		#debug % accuracy: 0.9476948141530134
+
+		Validation results:
+		#debug time to eval:  4.2587363719940186
+		#debug got total correct 13499 out of 25360: 
+		#debug correct by category:  [[5122 3358 2093  429 1045  488  109  311  112  133    0  299]]
+		#debug % accuracy: 0.532294952681388
+
+	5. bs 256 + ts 50 + hu 60 + 240 fc + 120 fc (tanh) + 206 eps
+		Training results:
+		time to train one epoch 206 : 41.9429931640625
+		average loss at epoch 206 : 0.1544684599209952
+		#debug time to eval:  16.961726903915405
+		#debug got total correct 73267 out of 76111: 
+		#debug correct by category:  [[22431 20301 10953  4312  5790  3648   454  1614   823  1172    23  1746]]
+		#debug % accuracy: 0.962633522092733
+
+		Validation Results:
+		#debug time to eval:  4.447652339935303
+		#debug got total correct 13730 out of 25360: 
+		#debug correct by category:  [[5382 3407 1946  488 1042  492  108  301  116  152    1  295]]
+		#debug % accuracy: 0.541403785488959
+15-4 Trade validation gain for training loss
+	1. Taking 5 pretrained and using dropout
+		Training Results:
+		#debug time to eval:  13.410565376281738
+		#debug got total correct 52129 out of 76111: 
+		#debug correct by category:  [[19074 13181  7842  1917  4093  2130   285  1268   401   554     0  1384]]
+		#debug % accuracy: 0.6849075692081302		
+
+		Validation Results:
+		#debug time to eval:  4.688985824584961
+		#debug got total correct 15834 out of 25360: 
+		#debug correct by category:  [[6060 3960 2377  518 1181  597  104  372  112  140    0  413]]
+		#debug % accuracy: 0.6243690851735015
+
+	Some math: parm
+
+
+Others
+      1.My deployed app 2 predicted this to be politics, while it was tagged coronavirus
+	I hope that very soon our PM will announce that he will be making tea because I ain ’ t getting any tea due to this lockdown
+	Hence I am increasing title length.
+	Right now 35 seems like a good number, time to do some human bechmarks:
+      2. As the network was struggling to fit the last 22k points, I decided to check some of them and find out if I can classify them  	using title only
+		(Note: These are points that the classifier gets 'wrong'.)
+
+		1. I tested myself on first 10 points, I guessed 2, as the titles were too small
+		   	I got 7 wrong out of 10:
+			titles: ['Showtime s Vice Exposes Human Rights Crisis as Muslims Are Targeted in India Exclusive Video', 'Creativity on Budget with Blood Moon Eclipse', 'Environmentalists Ask Is India s Government Making Bad Air Worse New York Times', 'NDTV x Live TV Watch Live TV Free News NonStop Live TV on NDTV', 'Mumbai continues to show up', 'What does think of Alexandria OcasioCortez Do you think we need politicians like her Or are we much better off without those like her', 'Serious What can do to help this country', 'Having a great time', 'What the Kulbhushan Jadhav Saga Reveals About India and Pakistan s Balochistan Problems', 'British Columbia Targets Entrepreneurs Skilled Workers International Students']
+			my response: ['Politics', 'Policy/Economy', 'Politics', 'Non-Political', 'Coronavirus', 'Politics', 'AskIndia', 'Non-Political', 'Politics', 'Non-Political']
+			correct: ['CAA-NRC-NPR', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics']
+			
+			I got 5 wrong out of 10:
+			['Remembering judge Loya tweets Rahul Gandhi amid row over Justice Muralidhar transfer', 'US Urges Release Of J K Leaders Stresses Equal Protection Under CAA', 'First time in years Indian Railways reports zero passenger death in FY', 'Jamia Coordination Committee member arrested in connection with antiCAA protests in Delhi s Jaffrabad Firstpost', 'Indian forces killed my brother one day I will kill them all A yrold in Kulgam', 'India Condom Pregnancies abortions', 'West Bengal Kerala Odisha opt out of Centre s aspirational districts scheme', 'Rational behind the arms race on the Indian subcontinent', 'IEA Says Oil Demand Growth at Lowest Since', 'Is it possible for any prime minister to bring dictatorship rule in India']
+			corrrect:  ['Politics', 'Politics', 'Politics', 'CAA-NRC-NPR', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics']
+			my response:  ['Politics', 'CAA-NRC-NPR', 'Non-Political', 'CAA-NRC-NPR', 'Politics', 'Non-Political', 'Politics', 'Politics', 'Business/Finance', 'AskIndia']
+			I got 7 wrong out of 10: (guessed 2)
+		['on Indian Media these days', 'Dinamalar Classified Ads Booking in Puducherry at Lowest Rates', 'Tainted in top IT posts Daily Pioneer', 'GamingBytes Beware of these PUBG cheats', 'India Aadhar system and the difficulties in reporting it', 'I love you India whole world is watching you No matter where are you are from whether you are from east or south no matter what your religion is just be together and stay united DJ Snake', 'In West Bengal village woman raped rods inserted in genitals', 'Showdown likely as opposition opposes penal provisions of instant talaq bill', 'A father to hundreds of daughters', 'Government set to digitally map India']
+corrrect:  ['Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Politics', 'Non-Political', 'Non-Political']
+my response:  ['Non-Political', 'Non-Political', 'Science/Technology', 'Non-Political', 'Politics', 'Non-Political', 'Non-Political', 'Politics', 'Non-Political', 'Politics']
+			
+			Inference: Right now, I think that I should guess Political if unsure, Maybe this will increase my performance
+
+
+			I got only 1 wrong out of 10 (Above stratergy worked well) (guessed 3)
+			['PSA Tata Sky stores your password in plaintext', 'Vehicle requisition woes hit citizens as Nagaland gears up for February elections', 'Main Bhi Bharat Tribes of India', 'Maunendra', 'A southern discontent', 'nd International Congress of Military Medicine held in New Delhi Nov', 'Kathua Prashant Bhushan Files Criminal Complaint against Madhu Kishwar', 'UK Sought Papers To Arrest Nirav Modi India Did nt Respond Say Sources', 'Is this really whats happening', 'One can t hold Modi responsible for faulty execution of reforms Narayana Murthy']
+			corrrect:  ['Non-Political', 'Politics', 'Non-Political', 'Politics', 'Politics', 'Non-Political', 'Politics', 'Politics', 'Politics', 'Politics']
+			my response:  ['Science/Technology', 'Politics', 'Non-Political', 'Politics', 'Politics', 'Non-Political', 'Politics', 'Politics', 'Politics', 'Politics']
+			
+			I also did selection by elimination. 
+			
+			I got 8 wrong of 10 (guessed 1)
+			['India s taken a quantum jump in wrong direction since Amartya Sen', 'Rahul Gandhi takes a swipe at PM Modi asks if he got any blackmoney back from Switzerland on his plane', 'What are the chances of Internal Emergency in India What can we do in such a scenario', 'SC dismisses plea seeking framing of laws against fake news', 'Is it only the common people who have to abide by the rules boundaries and whatever', 'Railways to sack absentee employees who are on unauthorised leave', 'PM Modi to Inaugurate World s Tallest Sardar Patel Statue on Oct', 'NP Small study on different protein sources for health enthusiast', 'Draft NEP Elite used English to marginalise large sections of society', 'Anyone else remember the laser light the assortment of lenses available in India back in the']
+	corrrect:  ['Politics', 'Politics', 'Politics', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political']
+	my response:  ['Politics', 'Politics', 'Coronavirus', 'Politics', 'Politics', 'Coronavirus', 'Politics', 'Food', 'Politics', 'AskIndia']
+
+			I got 4 wrong of 10 (guessed 1)
+['Someone hacked my PayTm account You would think a company with so much security would be safe', 'The Wanderer Status Quo', 'How will Indian Consumer benefit from black Friday sale NP', 'Jeff Hardy s greatest title triumphs', 'Senior Advocate Mehmood Pracha s talk at JNU on destructive trio of NPRNRCCAA', 'Rajnath singh the home minister nrc news today', 'HSSC recruitment Vacancies Bank Tests', 'Sabarimala Row Amit Shah Lashes Out At Pinarayi Vijayan Government For Its Inept Handling', 'Happy Independence Day', 'Original Post Hundreds of millions of people are coming online for the first time in their lives Be gentle with them and help them as much as you can Do nt be a bully']
+	corrrect:  ['Non-Political', 'Non-Political', 'Non-Political', 'Non-Political', 'Politics', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political']
+	my response:  ['Non-Political', 'Non-Political', 'AskIndia', 'Non-Political', 'CAA-NRC-NPR', 'CAA-NRC-NPR', 'Non-Political', 'Politics', 'Non-Political', 'Non-Political']
+			Inference: Surprisingly, caa-nrc-npr posts even after having caanrcnpr mention are tagged as Politics, Non Political
+
+			I got 7 wrong out of 10 (guessed 2)
+['How do you cancel a transaction', 'Who is The Strongest in Asia China Or Japan', 'of family killed in Pakistani shelling in Jammu and Kashmir s Poonch', 'rupees coin with picture of Netaji Subhash Chandra will be released on December', 'Amazon Prime Student month trial', 'These Are The Women Who Helped Draft The Indian Constitution', 'Flipkart Axis Bank launch cobranded credit card offering unlimited cashback Check details here', 'What do you guys think about Bose DeadAlive series', 'Basic income works and works well', 'Bak Bak Bilal Why Wo nt People Go EcoFriendly on Ganpati The Quint']
+	corrrect:  ['Non-Political', 'Politics', 'Non-Political', 'Business/Finance', 'Non-Political', 'Non-Political', 'Business/Finance', 'Non-Political', 'Non-Political', 'Non-Political']
+	my response:  ['AskIndia', 'Politics', 'Politics', 'Non-Political', 'Non-Political', 'Politics', 'Non-Political', 'AskIndia', 'Policy/Economy', 'Non-Political']	
+
+			I got 7 wrong of 10 (guessed 0)
+			['A cartoon depicting Sikh extending a helping hand to a drowning Kashmiri', 'PNB scam Whistleblower Hari Prasad says RoC did not take action against Mehul Choksi', 'World Population By Country Top Country Worldwide', 'Red alert sounded as cyclonic storm Titli heads towards Odisha', 'ScoopWhoop is trimming its news operations as it lays off people', 'WhatsApp spyware was used against Bhima Koregaon accused to plant evidence claims Nagpur lawyer', 'Students vs Police', 'More facts about Indian movies in China Questions about honest Chinese views on them are welcome Be polite please', 'Android is highly customizable', 'FY GDP growth revised to from earlier']
+	correct:  ['Non-Political', 'Non-Political', 'Non-Political', 'Politics', 'Business/Finance', 'Politics', 'Politics', 'Non-Political', 'Politics', 'Politics']
+	my response:  ['Politics', 'Politics', 'Non-Political', 'Non-Political', 'Non-Political', 'Politics', 'Politics', 'AskIndia', 'Science/Technology', 'Policy/Economy']		
+
+			Inference: I am not quite good at this task, and now I think the classifier is also having similar performance on these datapoints.	
+
+
+			I got 4 wrong of 10 (guessed 0)
+['Looking For An Education Loan Don t Bank On Banks Indian banks which have chased growth across most retail credit segments continue to shun education loans Why', 'Learn patriotism from Mudhol dogs', 'Why does India say no to Kashmir mediation', 'G data charges may go up by X as Airtel Jio and Vodafone ask govt to set minimum floor price', 'Assam Commonwealth Points of Light Award for Forest Man of India Jadav Payeng', 'Cyclone Ockhi Modi on oneday tour to Kerala TN Lakshadweep', 'SAAHOIndia s Biggest high Budget FLOP Movie Watch this to know why', 'AliExpress has the best discunts', 'Is there a white minority in India', 'Love Simon the first LGBTQ awareness teen film released worldwide has been banned by Indian Censorship Board']
+		correct:  ['Business/Finance', 'Politics', 'Politics', 'Non-Political', 'Non-Political', 'Politics', 'Non-Political', 'Non-Political', 'Non-Political', 'Politics']
+		my response:  ['AskIndia', 'Politics', 'Politics', 'Business/Finance', 'Non-Political', 'Politics', 'Non-Political', 'Non-Political', 'AskIndia', 'Non-Political']
+
+			I got all wrong (guessed 1)
+			['The Stupidity of National Universities', 'Three Pounds Of Grey Is Enough To Turn On Powerhouse', 'The day my grandmother was born they went for rice planting', 'Pudiya Ghumao Diamond Merchants Open Secret to Scam Banks', 'What is the difference between good and bad Horsetrading marks', 'Highspeed overnight intercity train to soon cut your travel time', 'Redmi Note Review Unboxing in Hindi', 'What games are you playing this weekend', 'About lakh new patients are diagnosed with Liver Cirrhosis every year in India How then should it be managed better', 'Right']
+correct:  ['Non-Political', 'Business/Finance', 'Politics', 'Non-Political', 'Politics', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political', 'Non-Political']
+my response:  ['Politics', 'Non-Political', 'Non-Political', 'Business/Finance', 'AskIndia', 'Politics', 'Science/Technology', 'AskIndia', 'AskIndia', 'Politics']
+			
+			I got 6 wrong (guessed 2)
+['Uber Targets Expansion in FastGrowing West African Markets', 'Doing a new show on defence feedback please', 'For those who are in a dilemma on what to do after th', 'Sharad Pawar Slams Government Over CBI Infighting Questions Its Effectiveness With Bribery Charges', 'Gujarat asks Centre for Rs crore special package Times of India', 'SC pulls up States for delay in recruitment of judges', 'BJP MLA Rameshwar Sharma We are objecting since cow milk is being sold alongside chicken and eggs This is hurting religious sentiment of people We request the govt to look into it Milk outlets chicken outlets should be opened at some distance from each other', 'Comment your old time favourite shows or pick out your fav shows', 'Why this part of Janpath is ignored', 'This is me the guy who left home']
+correct:  ['Politics', 'Politics', 'Non-Political', 'Non-Political', 'Politics', 'Non-Political', 'Politics', 'AskIndia', 'Non-Political', 'AskIndia']
+my response:  ['Business/Finance', 'AskIndia', 'Coronavirus', 'Politics', 'Politics', 'Non-Political', 'Politics', 'AskIndia', 'Politics', 'Non-Political']
+
+			I got 5 wrong (guessed 1)
+['India celebrating a new festival or it s just a distraction', 'Elephant collecting Tax Wild Elephant eating fruits vegetable loaded on a tourist taxis in Uttarakhand', 'We need to save motherearth specially we need to apply this in india what you people think comment please after watching thing thankuEpicentertainment', 'Apple iPhone Sales in China Fell by a Fifth in Fourth Quarter IDC', 'If Rahul Gandhi gets elected as PM what changes do you think will be bring', 'Maharashtra starts disbursing power subsidy for textile units', 'Pollution in India US College Survey', 'Hi Reddit whats your favourite hindi songtrack these days', 'Lord Rama Got Married Here Virat Kohli Not A Patriot BJP Legislator', 'Inhale Safety Exhale Crime A Letter to The Prime Minister']
+correct:  ['Politics', 'Non-Political', 'Non-Political', 'Politics', 'AskIndia', 'Non-Political', 'AskIndia', 'AskIndia', 'Politics', 'AskIndia']
+my response:  ['Coronavirus', 'Non-Political', 'Non-Political', 'Non-Political', 'Politics', 'Politics', 'AskIndia', 'AskIndia', 'Politics', 'Politics']
+
