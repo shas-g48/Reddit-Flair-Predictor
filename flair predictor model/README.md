@@ -1,4 +1,4 @@
-#Flair Predictor Model for r/india
+# Flair Predictor Model for r/india
 
 ## Run
 * Jupyter
