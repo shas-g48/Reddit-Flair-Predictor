@@ -28,18 +28,18 @@ average loss at epoch 73 : 0.728864552661977
 ```
 
 ## Performance by flair:
-Politics: 71.3
-Non-Political: 61.7
-AskIndia: 58.4
-Policy/Economy: 36.4
-Business/Finance: 61.5
-Science/Technology: 42.2
-Scheduled: 66.7
-Sports: 62.8
-Food: 45.2
-Photography: 34.1
-CAA-NRC-NPR: 0 (lack of data points in test set)
-Coronavirus: 53.4
+* Politics: 71.3
+* Non-Political: 61.7
+* AskIndia: 58.4
+* Policy/Economy: 36.4
+* Business/Finance: 61.5
+* Science/Technology: 42.2
+* Scheduled: 66.7
+* Sports: 62.8
+* Food: 45.2
+* Photography: 34.1
+* CAA-NRC-NPR: 0 (lack of data points in test set)
+* Coronavirus: 53.4
 
 ## What is it good at?
 
@@ -113,7 +113,7 @@ India celebrating a new festival or it s just a distraction
 * No dropout
 * All l2 = 0.6
 
-![regular-6](images/regular-6.png)
+![regular-5](images/regular-5.png)
 
 ## Raw log of regularization attempts
 ```

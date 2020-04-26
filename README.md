@@ -12,5 +12,5 @@ pip3 install -r requirements.txt
 ```
 * After the install finishes,
 ```
-python3 -c 'import nltk; nltk.download('punkt')'
+python3 -c 'import nltk; nltk.download("punkt")'
 ```
