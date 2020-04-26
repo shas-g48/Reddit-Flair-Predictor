@@ -1,0 +1,105 @@
+8 April 2020:
+first tried to use praw, but found that it can only get 1000 results, which amounts to ~3 days of data on r/india
+Using another api pushshift, able to search posts by date, but it had the following problem:
+	pushshift unlike praw is not using reddit api directly, pushshift instead captures a post
+	when it is initially posted. This means that if the post changes, these changes are not captured by the api
+	for example if it is removed by moderators, automod removes it, it gets deleted, has missing/ incorrect flair etc.
+So I went for a hybrid approach:
+	1. Use pushshift to get results by searching for posts after a date, iterating over date(s)
+	2. Use praw to get current status of the post by getting it's url from pushshift
+	3. if valid, get data from praw
+
+10 April 2020:
+Conducted initial eda, came to know a lot about the dataset, cleaned it
+Class imbalance came to light, and so did the imbalance in data length available 
+for each class
+Right now I am thinking of trying out some of the following approaches:
+1. Use lstm with/without attention with text embeddings from fasttext
+2. Finetune a recurrent net, like ULMFiT
+3. Finetune a transformer net, like openAI GPT
+4. Ensemble? Boost data? Under/Over sample?
+Currently proceeding to understand how to do the above, all this + eda 
+will be done again and again till get a satisfying answer
+
+12 April 2020
+Trying to get baseline accuracy using transformers, found a simple implementation SimpleTransformers https://github.com/ThilinaRajapakse/simpletransformers
+plan to do a baseline lstm, maybe from scratch? and also metric for loss to tackle imbalance.
+
+13 April 2020
+Trying gru from scratch + embeddings from fasttext
+
+14 April 2020 noon
+gru from scratch implemented
+some roadblocks:
+1. instead of loading whole dataset and converting to embedding, need to only get embedding for batch
+2. need to use embeddings for subword rather than word as won't generalize to oov
+3. came across gensim? can maybe use that
+4. better loss function than softmax cross entropy
+
+14 April 2020 night
+gru from scratch + fasttext + input/output placeholders implemented
+some roadblocks faced:
+1. Preferred approach was to use tf.data, but cannot because converting the whole dataset to embedding runs out of memory.
+2. Then tried tensorflow eager, able to get data but for some reason unable to apply gradients
+3. Then implemented non eager tf with placeholder (using gensim to train fasttext model), training on a dataset of ~80k is too slow to be practical
+4. Can use a embedding layer, but then won't generalize to oov
+Todo:
+1. Figure out a way to make training feasible before implementing ideas from 14 April noon
+
+15 April 2020 noon
+training is taking a reasonable time on cpu after reducing gru hidden units and decreasing size of input
+Some challenges and todo:
+1. Train the neural network well, applying advice from https://karpathy.github.io/2019/04/25/recipe/
+2. Get some more knowledge about nlp, maybe go through some of the content of cs224n
+3. Implement attention from scratch
+4. Again the loss is not a good metric, will refer to 1
+5. Create a method of evaluating performance, will refer to 1
+6. Maintain a training log
+Todo later:
+1. Figure out performance difference between my cpu and colab gpu, so that I can get a reasonable boost while training
+
+16 April 2020 night
+Added a complete training + evaluation pipeline to my model, got some dumb baselines, added performance metrics
+verified correctness of code.
+Some challenges and Todo:
+1. Continue tuning the network, same as 15 April 1.
+2. Explore different architectures for my gru net
+	1. increase hidden unit size
+	2. stack multiple gru cells
+	3. use attention
+3. Complete Todo 1. from 15 April
+
+17 April 2020 night
+Added a loss summary to tensorboard per epoch, no need of smoothing in tensorboard
+Tried model iteration, got some results, but can't be too sure
+because forgot to set random seed.
+Some challenges and Todo:
+1. Continue tuning the network, same as 16 April 1.
+2. Maybe validate some of the results today after setting the seed correctly
+3. Complete Todo 1. from 15 April
+4. Start development of webapp
+
+19 April 2020 Night
+Finished Development of webapp, runs locally
+Will check deployability on heroku
+Fixed training and evaluation time bug
+Some challenges and Todo:
+1. As the webapp is mostly finished, now I have a complete train-evaluate-test-build-deploy pipeline,
+  so I can concentrate on further tuning the network
+2. Complete 2. from April 17
+3. Finish some requirements of submission
+
+20 April 2020 Night
+Adapted webapp code to run on heroku,
+switched from gensim to fasttext,
+updated requirements
+Details:
+1. As now webapp is deployed on heroku, focus on 1. form 19 April 2020 Night
+2. Changed tensorflow from 1.15 to 1.13.1 to reduce heroku slug size
+3. Switched from gensim to fasttext to reduce heroku slug size
+4. reduced embedding size to decrease size of trained fasttext model
+5. removed unnecessary variables from webapp
+Todo:
+1. 2. from 19 April 2020 Night
+2. Conduct eda again
+3. Continue tuning the network
