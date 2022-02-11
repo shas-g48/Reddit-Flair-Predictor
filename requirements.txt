@@ -28,7 +28,7 @@ numpy==1.18.3
 praw==6.5.1
 pandas==0.24.2
 prawcore==1.0.1
-protobuf==3.11.3
+protobuf==3.15.0
 pybind11==2.5.0
 python-dotenv==0.13.0
 regex==2020.4.4
